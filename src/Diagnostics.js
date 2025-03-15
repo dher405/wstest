@@ -116,7 +116,7 @@ function Diagnostics() {
 
     const fallbackNetworkTest = async () => {
         try {
-            const response = await fetch("https://www.google.com", { mode: 'no-cors' });
+            await fetch("https://www.google.com", { mode: 'no-cors' });  // Removed 'response' variable
             setNetworkStatus("Internet is reachable, but WebSocket is blocked.");
         } catch (error) {
             setNetworkStatus("Network issue detected: No WebSocket and failed HTTP request.");
