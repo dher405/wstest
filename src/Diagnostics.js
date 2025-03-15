@@ -2,8 +2,8 @@ import React, { useState, useEffect } from "react";
 import "./Diagnostics.css"; // Import external stylesheet
 
 function Diagnostics() {
-    const websocketUrl = "wss://echo.websocket.events"; 
-    const stunServerUrl = "stun:stun.l.google.com:19302";
+    const websocketUrl = "wss://aws80-f01-ccw01.engage.ringcentral.com"; 
+    const stunServerUrl = "stun:stun1.eo1.engage.ringcentral.com:19302";
     const networkTestUrl = "https://www.google.com";
 
     const [results, setResults] = useState({
