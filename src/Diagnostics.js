@@ -1,10 +1,15 @@
 import React, { useState, useEffect } from "react";
-import "./Diagnostics.css"; // Import external stylesheet
+import "./Diagnostics.css";
 
 function Diagnostics() {
-    const websocketUrl = "wss://sip131-1111.ringcentral.com:8083/"; 
+    const websocketUrl = "wss://sip131-1111.ringcentral.com:8083/";
     const stunServerUrl = "stun:stun1.eo1.engage.ringcentral.com:19302";
     const networkTestUrl = "https://www.google.com";
+    const userId = "803729045020";
+    const password = "j0IM3WpFzs";
+    const realm = "sip.ringcentral.com";
+    const callId = "test-call-12345";
+    const cseq = 1;
 
     const [results, setResults] = useState({
         networkStatus: "Pending...",
@@ -49,7 +54,7 @@ function Diagnostics() {
 
         gatherBrowserInfo();
         await testSTUNICE();
-        await testWebSocket();
+        await testSIPWebSocket();
         setLoading(false);
     };
 
@@ -115,62 +120,6 @@ function Diagnostics() {
         }
     };
 
-    const testWebSocket = async () => {
-        const ws = new WebSocket(websocketUrl);
-        let startTime, latency;
-        let messagesReceived = 0;
-
-        ws.onopen = () => {
-            startTime = performance.now();
-            ws.send('Ping');
-        };
-
-        ws.onmessage = (event) => {
-            messagesReceived++;
-            latency = performance.now() - startTime;
-
-            setResults(prev => ({
-                ...prev,
-                websocketTest: `✅ PASS - WebSocket connected successfully.<br><strong>WebSocket URL:</strong> ${websocketUrl}<br><strong>Latency:</strong> ${latency.toFixed(2)} ms`
-            }));
-
-            detectBrowserIssues(messagesReceived, latency);
-            ws.close();
-        };
-
-        ws.onerror = () => {
-            setResults(prev => ({
-                ...prev,
-                websocketTest: `❌ FAIL - WebSocket connection failed.<br><strong>WebSocket URL:</strong> ${websocketUrl}<br>Possible network block or firewall issue.`
-            }));
-        };
-
-        ws.onclose = () => {
-            if (messagesReceived === 0) {
-                detectBrowserIssues(messagesReceived, latency);
-            }
-        };
-    };
-
-    const detectBrowserIssues = (messagesReceived, latency) => {
-        if (messagesReceived === 0) {
-            setResults(prev => ({
-                ...prev,
-                performanceTest: "❌ FAIL - Possible JavaScript execution issue or caching problem. Try clearing cache."
-            }));
-        } else if (latency > 2000) {
-            setResults(prev => ({
-                ...prev,
-                performanceTest: `⚠ WARNING - High WebSocket latency detected (${latency.toFixed(2)} ms). Possible browser performance issue.`
-            }));
-        } else {
-            setResults(prev => ({
-                ...prev,
-                performanceTest: "✅ PASS - Browser performance is normal."
-            }));
-        }
-    };
-
     return (
         <div>
             <h1>Network & Browser Diagnostics</h1>
@@ -208,4 +157,5 @@ function Diagnostics() {
 }
 
 export default Diagnostics;
+
 
