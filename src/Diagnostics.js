@@ -44,6 +44,7 @@ function Diagnostics() {
                 return false;
             }
         })();
+        let cacheSize = performance.memory ? performance.memory.usedJSHeapSize / 1024 / 1024 : "Unknown";
 
         setBrowserInfo(`
             <p><strong>Browser:</strong> ${navigator.userAgent}</p>
@@ -52,6 +53,7 @@ function Diagnostics() {
             <p><strong>WebGL Support:</strong> ${webglSupport ? "Yes" : "No"}</p>
             <p><strong>Local Storage:</strong> ${typeof localStorage !== 'undefined' ? "Available" : "Not Available"}</p>
             <p><strong>Cookies Enabled:</strong> ${navigator.cookieEnabled ? "Yes" : "No"}</p>
+            <p><strong>Browser Cache Usage:</strong> ${cacheSize !== "Unknown" ? cacheSize.toFixed(2) + " MB" : "Unknown"}</p>
         `);
     };
 
@@ -87,36 +89,46 @@ function Diagnostics() {
     };
 
     const testWebSocket = async () => {
-        try {
-            const ws = new WebSocket('wss://echo.websocket.events');
+        const ws = new WebSocket('wss://echo.websocket.events');
+        let startTime, latency;
+        let messagesReceived = 0;
 
-            ws.onopen = () => {
-                setWebsocketOutput((prev) => prev + '<br>WebSocket connection opened.');
-                ws.send('Ping');
-            };
+        ws.onopen = () => {
+            setWebsocketOutput((prev) => prev + '<br>WebSocket connection opened.');
+            startTime = performance.now();
+            ws.send('Ping');
+        };
 
-            ws.onmessage = (event) => {
-                setWebsocketOutput((prev) => prev + `<br>WebSocket message received: ${event.data}`);
-                ws.close();
-            };
+        ws.onmessage = (event) => {
+            messagesReceived++;
+            latency = performance.now() - startTime;
+            setWebsocketOutput((prev) => prev + `<br>WebSocket message received: ${event.data}`);
+            setWebsocketOutput((prev) => prev + `<br>Latency: ${latency.toFixed(2)} ms`);
+            ws.close();
+        };
 
-            ws.onerror = (error) => {
-                setWebsocketOutput((prev) => prev + `<br>WebSocket error: ${error.message}`);
-                fallbackNetworkTest();
-            };
-
-            ws.onclose = () => {
-                setWebsocketOutput((prev) => prev + '<br>WebSocket connection closed.');
-            };
-        } catch (error) {
-            setWebsocketOutput((prev) => prev + `<br>WebSocket test failed: ${error}`);
+        ws.onerror = (error) => {
+            setWebsocketOutput((prev) => prev + `<br>WebSocket error: ${error.message}`);
             fallbackNetworkTest();
+        };
+
+        ws.onclose = () => {
+            setWebsocketOutput((prev) => prev + `<br>WebSocket connection closed.`);
+            detectBrowserIssues(messagesReceived, latency);
+        };
+    };
+
+    const detectBrowserIssues = (messagesReceived, latency) => {
+        if (messagesReceived === 0) {
+            setWebsocketOutput((prev) => prev + "<br>⚠ Possible issue with JavaScript execution or caching. Try clearing the browser cache.");
+        } else if (latency > 2000) {
+            setWebsocketOutput((prev) => prev + "<br>⚠ High WebSocket latency detected. Browser performance may be affecting real-time communication.");
         }
     };
 
     const fallbackNetworkTest = async () => {
         try {
-            await fetch("https://www.google.com", { mode: 'no-cors' });  // Removed 'response' variable
+            await fetch("https://www.google.com", { mode: 'no-cors' });
             setNetworkStatus("Internet is reachable, but WebSocket is blocked.");
         } catch (error) {
             setNetworkStatus("Network issue detected: No WebSocket and failed HTTP request.");
@@ -140,4 +152,3 @@ function Diagnostics() {
 }
 
 export default Diagnostics;
-
