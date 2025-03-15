@@ -58,64 +58,31 @@ function Diagnostics() {
         setLoading(false);
     };
 
-    const gatherBrowserInfo = () => {
-        let jsEnabled = typeof window !== 'undefined' ? "✅ PASS - JavaScript is enabled" : "❌ FAIL - JavaScript is disabled";
-        let cacheSize = performance.memory ? performance.memory.usedJSHeapSize / 1024 / 1024 : "Unknown";
-
-        setResults(prev => ({
-            ...prev,
-            browserInfo: `
-                <p><strong>JavaScript Status:</strong> ${jsEnabled}</p>
-                <p><strong>Browser Cache Usage:</strong> ${cacheSize !== "Unknown" ? cacheSize.toFixed(2) + " MB" : "Unknown"}</p>
-            `
-        }));
-
-        if (cacheSize !== "Unknown" && cacheSize > 100) {
-            setResults(prev => ({
-                ...prev,
-                javascriptCacheTest: `❌ FAIL - High browser cache detected. Clearing cache may improve performance.`
-            }));
-        } else {
-            setResults(prev => ({
-                ...prev,
-                javascriptCacheTest: "✅ PASS - Cache usage is within normal limits."
-            }));
-        }
-    };
-
-    const testSTUNICE = async () => {
+    const testSIPWebSocket = async () => {
         try {
-            const configuration = { iceServers: [{ urls: stunServerUrl }] };
-            const pc = new RTCPeerConnection(configuration);
-
-            pc.onicecandidate = (event) => {
-                if (event.candidate) {
-                    setResults(prev => ({
-                        ...prev,
-                        stunTest: `✅ PASS - STUN/ICE connected successfully.<br><strong>STUN Server:</strong> ${stunServerUrl}`
-                    }));
-                } else {
-                    setResults(prev => ({
-                        ...prev,
-                        stunTest: `✅ PASS - ICE gathering complete.<br><strong>STUN Server:</strong> ${stunServerUrl}`
-                    }));
-                    pc.close();
-                }
+            const ws = new WebSocket(websocketUrl);
+            ws.onopen = () => {
+                ws.send("Ping");
             };
 
-            pc.createDataChannel('test');
-            await pc.createOffer()
-                .then((offer) => pc.setLocalDescription(offer))
-                .catch((error) => {
-                    setResults(prev => ({
-                        ...prev,
-                        stunTest: `❌ FAIL - STUN/ICE error: ${error}`
-                    }));
-                });
+            ws.onmessage = (event) => {
+                setResults(prev => ({
+                    ...prev,
+                    websocketTest: `✅ PASS - WebSocket connected successfully.<br><strong>WebSocket URL:</strong> ${websocketUrl}`
+                }));
+                ws.close();
+            };
+
+            ws.onerror = () => {
+                setResults(prev => ({
+                    ...prev,
+                    websocketTest: `❌ FAIL - WebSocket connection failed.<br><strong>WebSocket URL:</strong> ${websocketUrl}`
+                }));
+            };
         } catch (error) {
             setResults(prev => ({
                 ...prev,
-                stunTest: `❌ FAIL - STUN/ICE test failed: ${error}`
+                websocketTest: `❌ FAIL - WebSocket test error: ${error.message}`
             }));
         }
     };
@@ -157,4 +124,3 @@ function Diagnostics() {
 }
 
 export default Diagnostics;
-
