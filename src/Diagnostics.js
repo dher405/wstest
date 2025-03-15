@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import "./Diagnostics.css"; // Import external stylesheet
 
 function Diagnostics() {
-    const websocketUrl = "wss://sip123-1141.ringcentral.com:8083"; 
+    const websocketUrl = "wss//:sip131-1111.ringcentral.com:8083"; 
     const stunServerUrl = "stun:stun1.eo1.engage.ringcentral.com:19302";
     const networkTestUrl = "https://www.google.com";
 
