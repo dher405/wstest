@@ -2,10 +2,19 @@ import React, { useState, useEffect } from "react";
 import "./Diagnostics.css"; // Import external stylesheet
 
 function Diagnostics() {
-    const [browserInfo, setBrowserInfo] = useState('');
-    const [stunIceOutput, setStunIceOutput] = useState('');
-    const [websocketOutput, setWebsocketOutput] = useState('');
-    const [networkStatus, setNetworkStatus] = useState('');
+    const websocketUrl = "wss://echo.websocket.events"; 
+    const stunServerUrl = "stun:stun.l.google.com:19302";
+    const networkTestUrl = "https://www.google.com";
+
+    const [results, setResults] = useState({
+        networkStatus: "Pending...",
+        browserInfo: "Pending...",
+        websocketTest: "Pending...",
+        javascriptCacheTest: "Pending...",
+        performanceTest: "Pending...",
+        stunTest: "Pending..."
+    });
+
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
@@ -19,15 +28,24 @@ function Diagnostics() {
     }, []);
 
     const updateNetworkStatus = () => {
-        setNetworkStatus(navigator.onLine ? "Connected to the internet" : "Offline: No network connection detected");
+        setResults(prev => ({
+            ...prev,
+            networkStatus: navigator.onLine 
+                ? `✅ PASS - Connected to the internet<br><strong>Tested URL:</strong> ${networkTestUrl}`
+                : `❌ FAIL - No network detected`
+        }));
     };
 
     const runTests = async () => {
         setLoading(true);
-        setBrowserInfo('Gathering Browser and OS information...');
-        setStunIceOutput('Testing STUN/ICE...');
-        setWebsocketOutput('Testing WebSocket...');
-        setNetworkStatus('Checking network connectivity...');
+        setResults({
+            networkStatus: "Checking...",
+            browserInfo: "Checking...",
+            websocketTest: "Checking...",
+            javascriptCacheTest: "Checking...",
+            performanceTest: "Checking...",
+            stunTest: "Checking..."
+        });
 
         gatherBrowserInfo();
         await testSTUNICE();
@@ -36,65 +54,73 @@ function Diagnostics() {
     };
 
     const gatherBrowserInfo = () => {
-        let jsEnabled = typeof window !== 'undefined' ? "Enabled" : "Disabled";
-        let webglSupport = (() => {
-            try {
-                return !!window.WebGLRenderingContext;
-            } catch (e) {
-                return false;
-            }
-        })();
+        let jsEnabled = typeof window !== 'undefined' ? "✅ PASS - JavaScript is enabled" : "❌ FAIL - JavaScript is disabled";
         let cacheSize = performance.memory ? performance.memory.usedJSHeapSize / 1024 / 1024 : "Unknown";
 
-        setBrowserInfo(`
-            <p><strong>Browser:</strong> ${navigator.userAgent}</p>
-            <p><strong>Platform:</strong> ${navigator.platform}</p>
-            <p><strong>JavaScript:</strong> ${jsEnabled}</p>
-            <p><strong>WebGL Support:</strong> ${webglSupport ? "Yes" : "No"}</p>
-            <p><strong>Local Storage:</strong> ${typeof localStorage !== 'undefined' ? "Available" : "Not Available"}</p>
-            <p><strong>Cookies Enabled:</strong> ${navigator.cookieEnabled ? "Yes" : "No"}</p>
-            <p><strong>Browser Cache Usage:</strong> ${cacheSize !== "Unknown" ? cacheSize.toFixed(2) + " MB" : "Unknown"}</p>
-        `);
+        setResults(prev => ({
+            ...prev,
+            browserInfo: `
+                <p><strong>JavaScript Status:</strong> ${jsEnabled}</p>
+                <p><strong>Browser Cache Usage:</strong> ${cacheSize !== "Unknown" ? cacheSize.toFixed(2) + " MB" : "Unknown"}</p>
+            `
+        }));
+
+        if (cacheSize !== "Unknown" && cacheSize > 100) {
+            setResults(prev => ({
+                ...prev,
+                javascriptCacheTest: `❌ FAIL - High browser cache detected. Clearing cache may improve performance.`
+            }));
+        } else {
+            setResults(prev => ({
+                ...prev,
+                javascriptCacheTest: "✅ PASS - Cache usage is within normal limits."
+            }));
+        }
     };
 
     const testSTUNICE = async () => {
         try {
-            const configuration = {
-                iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
-            };
+            const configuration = { iceServers: [{ urls: stunServerUrl }] };
             const pc = new RTCPeerConnection(configuration);
 
             pc.onicecandidate = (event) => {
                 if (event.candidate) {
-                    setStunIceOutput((prev) => prev + `<br>ICE Candidate: ${JSON.stringify(event.candidate)}`);
+                    setResults(prev => ({
+                        ...prev,
+                        stunTest: `✅ PASS - STUN/ICE connected successfully.<br><strong>STUN Server:</strong> ${stunServerUrl}`
+                    }));
                 } else {
-                    setStunIceOutput((prev) => prev + '<br>ICE gathering complete.');
+                    setResults(prev => ({
+                        ...prev,
+                        stunTest: `✅ PASS - ICE gathering complete.<br><strong>STUN Server:</strong> ${stunServerUrl}`
+                    }));
                     pc.close();
                 }
-            };
-
-            pc.oniceconnectionstatechange = () => {
-                setStunIceOutput((prev) => prev + `<br>ICE Connection State: ${pc.iceConnectionState}`);
             };
 
             pc.createDataChannel('test');
             await pc.createOffer()
                 .then((offer) => pc.setLocalDescription(offer))
                 .catch((error) => {
-                    setStunIceOutput((prev) => prev + `<br>Error creating offer: ${error}`);
+                    setResults(prev => ({
+                        ...prev,
+                        stunTest: `❌ FAIL - STUN/ICE error: ${error}`
+                    }));
                 });
         } catch (error) {
-            setStunIceOutput((prev) => prev + `<br>STUN/ICE test failed: ${error}`);
+            setResults(prev => ({
+                ...prev,
+                stunTest: `❌ FAIL - STUN/ICE test failed: ${error}`
+            }));
         }
     };
 
     const testWebSocket = async () => {
-        const ws = new WebSocket('wss://echo.websocket.events');
+        const ws = new WebSocket(websocketUrl);
         let startTime, latency;
         let messagesReceived = 0;
 
         ws.onopen = () => {
-            setWebsocketOutput((prev) => prev + '<br>WebSocket connection opened.');
             startTime = performance.now();
             ws.send('Ping');
         };
@@ -102,53 +128,84 @@ function Diagnostics() {
         ws.onmessage = (event) => {
             messagesReceived++;
             latency = performance.now() - startTime;
-            setWebsocketOutput((prev) => prev + `<br>WebSocket message received: ${event.data}`);
-            setWebsocketOutput((prev) => prev + `<br>Latency: ${latency.toFixed(2)} ms`);
+
+            setResults(prev => ({
+                ...prev,
+                websocketTest: `✅ PASS - WebSocket connected successfully.<br><strong>WebSocket URL:</strong> ${websocketUrl}<br><strong>Latency:</strong> ${latency.toFixed(2)} ms`
+            }));
+
+            detectBrowserIssues(messagesReceived, latency);
             ws.close();
         };
 
-        ws.onerror = (error) => {
-            setWebsocketOutput((prev) => prev + `<br>WebSocket error: ${error.message}`);
-            fallbackNetworkTest();
+        ws.onerror = () => {
+            setResults(prev => ({
+                ...prev,
+                websocketTest: `❌ FAIL - WebSocket connection failed.<br><strong>WebSocket URL:</strong> ${websocketUrl}<br>Possible network block or firewall issue.`
+            }));
         };
 
         ws.onclose = () => {
-            setWebsocketOutput((prev) => prev + `<br>WebSocket connection closed.`);
-            detectBrowserIssues(messagesReceived, latency);
+            if (messagesReceived === 0) {
+                detectBrowserIssues(messagesReceived, latency);
+            }
         };
     };
 
     const detectBrowserIssues = (messagesReceived, latency) => {
         if (messagesReceived === 0) {
-            setWebsocketOutput((prev) => prev + "<br>⚠ Possible issue with JavaScript execution or caching. Try clearing the browser cache.");
+            setResults(prev => ({
+                ...prev,
+                performanceTest: "❌ FAIL - Possible JavaScript execution issue or caching problem. Try clearing cache."
+            }));
         } else if (latency > 2000) {
-            setWebsocketOutput((prev) => prev + "<br>⚠ High WebSocket latency detected. Browser performance may be affecting real-time communication.");
-        }
-    };
-
-    const fallbackNetworkTest = async () => {
-        try {
-            await fetch("https://www.google.com", { mode: 'no-cors' });
-            setNetworkStatus("Internet is reachable, but WebSocket is blocked.");
-        } catch (error) {
-            setNetworkStatus("Network issue detected: No WebSocket and failed HTTP request.");
+            setResults(prev => ({
+                ...prev,
+                performanceTest: `⚠ WARNING - High WebSocket latency detected (${latency.toFixed(2)} ms). Possible browser performance issue.`
+            }));
+        } else {
+            setResults(prev => ({
+                ...prev,
+                performanceTest: "✅ PASS - Browser performance is normal."
+            }));
         }
     };
 
     return (
         <div>
-            <h1>Network Diagnostics</h1>
+            <h1>Network & Browser Diagnostics</h1>
             <button onClick={runTests} disabled={loading}>
                 {loading ? 'Running Tests...' : 'Run Tests'}
             </button>
             <div id="results">
-                <div className="test-section" dangerouslySetInnerHTML={{ __html: networkStatus }}></div>
-                <div className="test-section" dangerouslySetInnerHTML={{ __html: browserInfo }}></div>
-                <div className="test-section" dangerouslySetInnerHTML={{ __html: stunIceOutput }}></div>
-                <div className="test-section" dangerouslySetInnerHTML={{ __html: websocketOutput }}></div>
+                <div className="test-section">
+                    <h3>Network Status</h3>
+                    <p dangerouslySetInnerHTML={{ __html: results.networkStatus }}></p>
+                </div>
+                <div className="test-section">
+                    <h3>Browser Info</h3>
+                    <p dangerouslySetInnerHTML={{ __html: results.browserInfo }}></p>
+                </div>
+                <div className="test-section">
+                    <h3>WebSocket Test</h3>
+                    <p dangerouslySetInnerHTML={{ __html: results.websocketTest }}></p>
+                </div>
+                <div className="test-section">
+                    <h3>STUN/ICE Test</h3>
+                    <p dangerouslySetInnerHTML={{ __html: results.stunTest }}></p>
+                </div>
+                <div className="test-section">
+                    <h3>JavaScript & Cache Test</h3>
+                    <p dangerouslySetInnerHTML={{ __html: results.javascriptCacheTest }}></p>
+                </div>
+                <div className="test-section">
+                    <h3>Performance Test</h3>
+                    <p dangerouslySetInnerHTML={{ __html: results.performanceTest }}></p>
+                </div>
             </div>
         </div>
     );
 }
 
 export default Diagnostics;
+
