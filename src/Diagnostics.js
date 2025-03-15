@@ -30,7 +30,7 @@ function Diagnostics() {
     const testSTUNICE = async () => {
         try {
             const configuration = {
-                iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
+                iceServers: [{ urls: 'stun:104.245.57.31:19302' }],
             };
             const pc = new RTCPeerConnection(configuration);
 
