@@ -195,24 +195,37 @@ function Diagnostics() {
         }));
       }
 
-      detectBrowserIssues(messagesReceived, latency);
-      if (!event.data.includes("200 OK")) {
-        ws.close();
-      }
-    };
-
-    ws.onerror = (error) => {
-      setResults((prev) => ({
-        ...prev,
-        testSIPWebSocket: `❌ FAIL - WebSocket connection failed: ${error.message || error}`,
-      }));
-      console.error("WebSocket error:", error);
-    };
-  } catch (error) {
+const detectBrowserIssues = (messagesReceived, latency) => {
+  // Your implementation of detectBrowserIssues here
+  if (messagesReceived === 0) {
     setResults((prev) => ({
       ...prev,
-      testSIPWebSocket: `❌ FAIL - WebSocket test error: ${error.message}`,
+      performanceTest:
+        "❌ FAIL - Possible JavaScript execution issue or caching problem. Try clearing cache.",
     }));
+  } else if (latency > 2000) {
+    setResults((prev) => ({
+      ...prev,
+      performanceTest: `⚠ WARNING - High WebSocket latency detected (${latency.toFixed(
+        2
+      )} ms). Possible browser performance issue.`,
+    }));
+  } else {
+    setResults((prev) => ({
+      ...prev,
+      performanceTest: "✅ PASS - Browser performance is normal.",
+    }));
+  }
+};
+
+const testSIPWebSocket = async () => {
+  try {
+    // ... your testSIPWebSocket code here ...
+    // Make sure to call detectBrowserIssues like this:
+    detectBrowserIssues(messagesReceived, latency);
+    // ...
+  } catch (error) {
+    // ... error handling ...
   }
 };
   
