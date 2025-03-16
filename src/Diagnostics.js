@@ -54,7 +54,7 @@ function Diagnostics() {
 
         gatherBrowserInfo();
         await testSTUNICE();
-        await testWebSocket();
+        await testSIPWebSocket();
         setLoading(false);
     };
 
@@ -231,4 +231,5 @@ function Diagnostics() {
 }
 
 export default Diagnostics;
+
 
