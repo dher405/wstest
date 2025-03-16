@@ -5,8 +5,8 @@ function Diagnostics() {
   const websocketUrl = "wss://sip123-1211.ringcentral.com:8083/"; // Updated URL
   const stunServerUrl = "stun:stun1.eo1.engage.ringcentral.com:19302";
   const networkTestUrl = "https://www.google.com";
-  const userId = "15378427020"; // Updated UserID
-  const password = "your_password"; // Replace with your password
+  const userId = "803729045020"; // Updated UserID
+  const password = "j0IM3WpFzs"; // Replace with your password
   const realm = "sip.ringcentral.com";
   const callId = "ht34kajl82l4ohq393i64h"; //Fixed Call ID
   const tag = "hi63o1nb94"; //Fixed Tag
