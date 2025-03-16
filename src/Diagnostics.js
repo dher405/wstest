@@ -2,16 +2,16 @@ import React, { useState, useEffect } from "react";
 import "./Diagnostics.css";
 
 function Diagnostics() {
-  const websocketUrl = "wss://sip123-1211.ringcentral.com:8083/"; // Updated URL
+  const websocketUrl = "wss://sip123-1211.ringcentral.com:8083/";
   const stunServerUrl = "stun:stun1.eo1.engage.ringcentral.com:19302";
   const networkTestUrl = "https://www.google.com";
-  const userId = "803729045020"; // Updated UserID
-  const password = "j0IM3WpFzs"; // Replace with your password
+  const userId = "803729045020";
+  const password = "j0IM3WpFzs";
   const realm = "sip.ringcentral.com";
-  const callId = "ht34kajl82l4ohq393i64h"; //Fixed Call ID
-  const tag = "hi63o1nb94"; //Fixed Tag
+  const callId = "ht34kajl82l4ohq393i64h";
+  const tag = "hi63o1nb94";
 
-   const [results, setResults] = useState({
+  const [results, setResults] = useState({
     networkStatus: "Pending...",
     browserInfo: "Pending...",
     testSIPWebSocket: "Pending...",
@@ -76,7 +76,7 @@ function Diagnostics() {
           }</p>
         `,
     }));
-    
+
     if (cacheSize !== "Unknown" && cacheSize > 100) {
       setResults((prev) => ({
         ...prev,
@@ -142,28 +142,50 @@ function Diagnostics() {
     return await md5Hash(`<span class="math-inline">\{ha1\}\:</span>{nonce}:${ha2}`);
   };
 
+  const detectBrowserIssues = (messagesReceived, latency) => {
+    if (messagesReceived === 0) {
+      setResults((prev) => ({
+        ...prev,
+        performanceTest:
+          "❌ FAIL - Possible JavaScript execution issue or caching problem. Try clearing cache.",
+      }));
+    } else if (latency > 2000) {
+      setResults((prev) => ({
+        ...prev,
+        performanceTest: `⚠ WARNING - High WebSocket latency detected (${latency.toFixed(
+          2
+        )} ms). Possible browser performance issue.`,
+      }));
+    } else {
+      setResults((prev) => ({
+        ...prev,
+        performanceTest: "✅ PASS - Browser performance is normal.",
+      }));
+    }
+  };
+
   const testSIPWebSocket = async () => {
-  try {
-    const ws = new WebSocket(websocketUrl);
-    let startTime = performance.now();
-    let messagesReceived = 0;
-    let cseq = 3581; // Start CSeq
-    let viaBranch;
+    try {
+      const ws = new WebSocket(websocketUrl);
+      let startTime = performance.now();
+      let messagesReceived = 0;
+      let cseq = 3581;
+      let viaBranch;
 
-    ws.onopen = () => {
-      console.log("WebSocket connection established."); // Debugging log
-      sendRegister();
-    };
+      ws.onopen = () => {
+        console.log("WebSocket connection established.");
+        sendRegister();
+      };
 
-    const sendRegister = (authHeader) => {
-      cseq++;
-      viaBranch = `z9hG4bK${Math.random().toString(36).substring(2, 15)}`; // Generate unique Via branch
-      let message = `REGISTER sip:sip.ringcentral.com SIP/2.0\nVia: SIP/2.0/WSS vvl6rb2qvu1r.invalid;branch=${viaBranch}\nMax-Forwards: 70\nTo: "18885287464*97568" <sip:18885287464*97568@sip.ringcentral.com>\nFrom: "18885287464*97568" <sip:18885287464*97568@sip.ringcentral.com>;tag=${tag}\nCall-ID: ${callId}\nCSeq: ${cseq} REGISTER\nP-RC-Supported-Ept-Roles: rc-engage-agent-ept\nContact: <sip:s3a24848@vvl6rb2qvu1r.invalid;transport=ws>;expires=120\nAllow: ACK,CANCEL,INVITE,MESSAGE,BYE,OPTIONS,INFO,NOTIFY,REFER\nSupported: path, gruu, outbound\nUser-Agent: SIP.js/0.13.5.2;mozilla/5.0 (macintosh; intel mac os x 10_15_7) applewebkit/537.36 (khtml, like gecko) chrome/133.0.0.0 safari/537.36\nContent-Length: 0\n`;
-      if (authHeader) {
-        message += `Authorization: ${authHeader}\n`;
-      }
-      message += `\n`; // End of message
-      console.log("Sending WebSocket message:\n", message); // Debugging log
+      const sendRegister = (authHeader) => {
+        cseq++;
+        viaBranch = `z9hG4bK${Math.random().toString(36).substring(2, 15)}`;
+        let message = `REGISTER sip:sip.ringcentral.com SIP/2.0\nVia: SIP/2.0/WSS vvl6rb2qvu1r.invalid;branch=<span class="math-inline">\{viaBranch\}\\nMax\-Forwards\: 70\\nTo\: "18885287464\*97568" <sip\:18885287464\*97568@sip\.ringcentral\.com\>\\nFrom\: "18885287464\*97568" <sip\:18885287464\*97568@sip\.ringcentral\.com\>;tag\=</span>{tag}\nCall-ID: ${callId}\nCSeq: ${cseq} REGISTER\nP-RC-Supported-Ept-Roles: rc-engage-agent-ept\nContact: <sip:s3a24848@vvl6rb2qvu1r.invalid;transport=ws>;expires=120\nAllow: ACK,CANCEL,INVITE,MESSAGE,BYE,OPTIONS,INFO,NOTIFY,REFER\nSupported: path, gruu, outbound\nUser-Agent: SIP.js/0.13.5.2;mozilla/5.0 (macintosh; intel mac os x 10_15_7) applewebkit/537.36 (khtml, like gecko) chrome/133.0.0.0 safari/537.36\nContent-Length: 0\n`;
+        if (authHeader) {
+          message += `Authorization: ${authHeader}\n`;
+        }
+        message += `\n`;
+        console.log("Sending WebSocket message:\
       ws.send(message);
     };
 
