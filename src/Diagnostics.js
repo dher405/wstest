@@ -142,7 +142,7 @@ function Diagnostics() {
     return await md5Hash(`<span class="math-inline">\{ha1\}\:</span>{nonce}:${ha2}`);
   };
 
- const detectBrowserIssues = (messagesReceived, latency) => {
+const detectBrowserIssues = (messagesReceived, latency, setResults) => {
   if (messagesReceived === 0) {
     setResults((prev) => ({
       ...prev,
@@ -164,7 +164,15 @@ function Diagnostics() {
   }
 };
 
-const testSIPWebSocket = async (setResults, websocketUrl, userId, password, realm, callId, tag) => {
+const testSIPWebSocket = async (
+  setResults,
+  websocketUrl,
+  userId,
+  password,
+  realm,
+  callId,
+  tag
+) => {
   try {
     const ws = new WebSocket(websocketUrl);
     let startTime = performance.now();
@@ -222,7 +230,7 @@ const testSIPWebSocket = async (setResults, websocketUrl, userId, password, real
         }));
       }
 
-      detectBrowserIssues(messagesReceived, latency);
+      detectBrowserIssues(messagesReceived, latency, setResults);
     };
 
     ws.onerror = (error) => {
@@ -308,8 +316,9 @@ function Diagnostics() {
 
     gatherBrowserInfo();
     await testSTUNICE();
-    await testSIPWebSocket(setResults, websocketUrl, userId, password, realm, callId, tag);
-    setLoading(false);
+    await testSIPWebSocket(
+      setResults,
+      websocketUrl,
   };
 
   const gatherBrowserInfo = () => {
