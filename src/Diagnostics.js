@@ -1,20 +1,15 @@
 import React, { useState, useEffect } from "react";
-import "./Diagnostics.css";
+import "./Diagnostics.css"; // Import external stylesheet
 
 function Diagnostics() {
-    const websocketUrl = "wss://sip131-1111.ringcentral.com:8083/";
+    const websocketUrl = "wss://sip131-1111.ringcentral.com:8083/"; 
     const stunServerUrl = "stun:stun1.eo1.engage.ringcentral.com:19302";
     const networkTestUrl = "https://www.google.com";
-    const userId = "803729045020";
-    const password = "j0IM3WpFzs";
-    const realm = "sip.ringcentral.com";
-    const callId = "test-call-12345";
-    const cseq = 1;
 
     const [results, setResults] = useState({
         networkStatus: "Pending...",
         browserInfo: "Pending...",
-        testSIPWebSocket: "Pending...",
+        websocketTest: "Pending...",
         javascriptCacheTest: "Pending...",
         performanceTest: "Pending...",
         stunTest: "Pending..."
@@ -46,7 +41,7 @@ function Diagnostics() {
         setResults({
             networkStatus: "Checking...",
             browserInfo: "Checking...",
-            testSIPWebSocket: "Checking...",
+            websocketTest: "Checking...",
             javascriptCacheTest: "Checking...",
             performanceTest: "Checking...",
             stunTest: "Checking..."
@@ -54,7 +49,7 @@ function Diagnostics() {
 
         gatherBrowserInfo();
         await testSTUNICE();
-        await testSIPWebSocket();
+        await testWebSocket();
         setLoading(false);
     };
 
@@ -120,59 +115,41 @@ function Diagnostics() {
         }
     };
 
-     const md5Hash = async (data) => {
-        const encoder = new TextEncoder();
-        const hashBuffer = await crypto.subtle.digest("MD5", encoder.encode(data));
-        return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, "0")).join("");
-    };
+    const testWebSocket = async () => {
+        const ws = new WebSocket(websocketUrl);
+        let startTime, latency;
+        let messagesReceived = 0;
 
-    const createAuthResponse = async (nonce) => {
-        const ha1 = await md5Hash(`${userId}:${realm}:${password}`);
-        const ha2 = await md5Hash("REGISTER:sip.sip.ringcentral.com");
-        return await md5Hash(`${ha1}:${nonce}:${ha2}`);
-    };
+        ws.onopen = () => {
+            startTime = performance.now();
+            ws.send('Ping');
+        };
 
-    const testSIPWebSocket = async () => {
-        try {
-            const ws = new WebSocket(websocketUrl);
-            ws.onopen = () => {
-                ws.send(`REGISTER sip:sip.ringcentral.com SIP/2.0\n\n`);
-            };
+        ws.onmessage = (event) => {
+            messagesReceived++;
+            latency = performance.now() - startTime;
 
-            ws.onmessage = async (event) => {
-                if (event.data.includes("401 Unauthorized")) {
-                    const nonceStart = event.data.indexOf('nonce="') + 7;
-                    const nonceEnd = event.data.indexOf('"', nonceStart);
-                    const nonce = event.data.substring(nonceStart, nonceEnd);
-                    const authResponse = await createAuthResponse(nonce);
-                    
-                    ws.send(`REGISTER sip:sip.ringcentral.com SIP/2.0\nAuthorization: Digest algorithm=MD5, username="${userId}", realm="${realm}", nonce="${nonce}", uri="sip:sip.ringcentral.com", response="${authResponse}"\n\n`);
-                } else if (event.data.includes("200 OK")) {
-                    setResults(prev => ({
-                        ...prev,
-                        testSIPWebSocket: `✅ PASS - SIP WebSocket connected and registered successfully.`
-                    }));
-                } else {
-                    setResults(prev => ({
-                        ...prev,
-                        testSIPWebSocket: `⚠ WARNING - Unexpected WebSocket response.`
-                    }));
-                }
-                ws.close();
-            };
-            
-            ws.onerror = () => {
-                setResults(prev => ({
-                    ...prev,
-                    testSIPWebSocket: "❌ FAIL - WebSocket connection failed."
-                }));
-            };
-        } catch (error) {
             setResults(prev => ({
                 ...prev,
-                testSIPWebSocket: `❌ FAIL - WebSocket test error: ${error.message}`
+                websocketTest: `✅ PASS - WebSocket connected successfully.<br><strong>WebSocket URL:</strong> ${websocketUrl}<br><strong>Latency:</strong> ${latency.toFixed(2)} ms`
             }));
-        }
+
+            detectBrowserIssues(messagesReceived, latency);
+            ws.close();
+        };
+
+        ws.onerror = () => {
+            setResults(prev => ({
+                ...prev,
+                websocketTest: `❌ FAIL - WebSocket connection failed.<br><strong>WebSocket URL:</strong> ${websocketUrl}<br>Possible network block or firewall issue.`
+            }));
+        };
+
+        ws.onclose = () => {
+            if (messagesReceived === 0) {
+                detectBrowserIssues(messagesReceived, latency);
+            }
+        };
     };
 
     const detectBrowserIssues = (messagesReceived, latency) => {
@@ -211,7 +188,7 @@ function Diagnostics() {
                 </div>
                 <div className="test-section">
                     <h3>WebSocket Test</h3>
-                    <p dangerouslySetInnerHTML={{ __html: results.testSIPWebSocket }}></p>
+                    <p dangerouslySetInnerHTML={{ __html: results.websocketTest }}></p>
                 </div>
                 <div className="test-section">
                     <h3>STUN/ICE Test</h3>
@@ -231,5 +208,3 @@ function Diagnostics() {
 }
 
 export default Diagnostics;
-
-
