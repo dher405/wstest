@@ -188,12 +188,14 @@ function Diagnostics() {
       }
     };
 
-    ws.onerror = () => {
-      setResults((prev) => ({
-        ...prev,
-        testSIPWebSocket: "❌ FAIL - WebSocket connection failed.",
-      }));
-    };
+
+    ws.onerror = (error) => {
+  setResults((prev) => ({
+    ...prev,
+    testSIPWebSocket: `❌ FAIL - WebSocket connection failed: ${error.message || error}`,
+  }));
+  console.error("WebSocket error:", error); // Log the error to the console
+};
   } catch (error) {
     setResults((prev) => ({
       ...prev,
