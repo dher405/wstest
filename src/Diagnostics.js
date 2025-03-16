@@ -141,7 +141,6 @@ function Diagnostics() {
     const ha2 = await md5Hash("REGISTER:sip.ringcentral.com");
     return await md5Hash(`<span class="math-inline">\{ha1\}\:</span>{nonce}:${ha2}`);
   };
-
 const detectBrowserIssues = (messagesReceived, latency, setResults) => {
   if (messagesReceived === 0) {
     setResults((prev) => ({
@@ -319,6 +318,13 @@ function Diagnostics() {
     await testSIPWebSocket(
       setResults,
       websocketUrl,
+      userId,
+      password,
+      realm,
+      callId,
+      tag
+    );
+    setLoading(false);
   };
 
   const gatherBrowserInfo = () => {
