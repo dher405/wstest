@@ -144,7 +144,6 @@ function Diagnostics() {
       .join("");
   };
 
-  const createAuthResponse = async (nonce) => {
     const ha1 = await md5Hash(`<span class="math-inline">\{userId\}\:</span>{realm}:${password}`);
     const ha2 = await md5Hash("REGISTER:sip.ringcentral.com");
     return await md5Hash(`<span class="math-inline">\{ha1\}\:</span>{nonce}:${ha2}`);
