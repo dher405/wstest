@@ -264,9 +264,9 @@ const createAuthResponse = async (userId, password, realm, nonce) => {
       .map((b) => b.toString(16).padStart(2, "0"))
       .join("");
   };
-  const ha1 = await md5Hash(`<span class="math-inline">\{userId\}\:</span>{realm}:${password}`);
+  const ha1 = await md5Hash(`${userId}:${realm}:${password}`); // Removed span tags
   const ha2 = await md5Hash("REGISTER:sip.ringcentral.com");
-  return await md5Hash(`<span class="math-inline">\{ha1\}\:</span>{nonce}:${ha2}`);
+  return await md5Hash(`${ha1}:${nonce}:${ha2}`); // Removed span tags
 };
 
 function Diagnostics() {
