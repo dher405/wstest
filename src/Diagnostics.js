@@ -148,24 +148,37 @@ function Diagnostics() {
     let startTime = performance.now();
     let messagesReceived = 0;
     let cseq = 3581; // Start CSeq
+    let viaBranch;
 
     ws.onopen = () => {
+      console.log("WebSocket connection established."); // Debugging log
+      sendRegister();
+    };
+
+    const sendRegister = (authHeader) => {
       cseq++;
-      ws.send(`REGISTER sip:sip.ringcentral.com SIP/2.0\nVia: SIP/2.0/WSS vvl6rb2qvu1r.invalid;branch=z9hG4bK${Math.random().toString(36).substring(2, 15)}\nMax-Forwards: 70\nTo: "18885287464*97568" <sip:18885287464*97568@sip.ringcentral.com>\nFrom: "18885287464*97568" <sip:18885287464*97568@sip.ringcentral.com>;tag=${tag}\nCall-ID: ${callId}\nCSeq: ${cseq} REGISTER\nP-RC-Supported-Ept-Roles: rc-engage-agent-ept\nContact: <sip:s3a24848@vvl6rb2qvu1r.invalid;transport=ws>;expires=120\nAllow: ACK,CANCEL,INVITE,MESSAGE,BYE,OPTIONS,INFO,NOTIFY,REFER\nSupported: path, gruu, outbound\nUser-Agent: SIP.js/0.13.5.2;mozilla/5.0 (macintosh; intel mac os x 10_15_7) applewebkit/537.36 (khtml, like gecko) chrome/133.0.0.0 safari/537.36\nContent-Length: 0\n\n`);
+      viaBranch = `z9hG4bK${Math.random().toString(36).substring(2, 15)}`; // Generate unique Via branch
+      let message = `REGISTER sip:sip.ringcentral.com SIP/2.0\nVia: SIP/2.0/WSS vvl6rb2qvu1r.invalid;branch=${viaBranch}\nMax-Forwards: 70\nTo: "18885287464*97568" <sip:18885287464*97568@sip.ringcentral.com>\nFrom: "18885287464*97568" <sip:18885287464*97568@sip.ringcentral.com>;tag=${tag}\nCall-ID: ${callId}\nCSeq: ${cseq} REGISTER\nP-RC-Supported-Ept-Roles: rc-engage-agent-ept\nContact: <sip:s3a24848@vvl6rb2qvu1r.invalid;transport=ws>;expires=120\nAllow: ACK,CANCEL,INVITE,MESSAGE,BYE,OPTIONS,INFO,NOTIFY,REFER\nSupported: path, gruu, outbound\nUser-Agent: SIP.js/0.13.5.2;mozilla/5.0 (macintosh; intel mac os x 10_15_7) applewebkit/537.36 (khtml, like gecko) chrome/133.0.0.0 safari/537.36\nContent-Length: 0\n`;
+      if (authHeader) {
+        message += `Authorization: ${authHeader}\n`;
+      }
+      message += `\n`; // End of message
+      console.log("Sending WebSocket message:\n", message); // Debugging log
+      ws.send(message);
     };
 
     ws.onmessage = async (event) => {
       messagesReceived++;
       let latency = performance.now() - startTime;
+      console.log("Received WebSocket message:\n", event.data); // Debugging log
 
       if (event.data.includes("401 Unauthorized")) {
         const nonceStart = event.data.indexOf('nonce="') + 7;
         const nonceEnd = event.data.indexOf('"', nonceStart);
         const nonce = event.data.substring(nonceStart, nonceEnd);
         const authResponse = await createAuthResponse(nonce);
-        cseq++;
-
-        ws.send(`REGISTER sip:sip.ringcentral.com SIP/2.0\nVia: SIP/2.0/WSS vvl6rb2qvu1r.invalid;branch=z9hG4bK${Math.random().toString(36).substring(2, 15)}\nMax-Forwards: 70\nTo: "18885287464*97568" <sip:18885287464*97568@sip.ringcentral.com>\nFrom: "18885287464*97568" <sip:18885287464*97568@sip.ringcentral.com>;tag=${tag}\nCall-ID: ${callId}\nCSeq: ${cseq} REGISTER\nAuthorization: Digest algorithm=MD5, username="${userId}", realm="${realm}", nonce="${nonce}", uri="sip:sip.ringcentral.com", response="${authResponse}"\nP-RC-Supported-Ept-Roles: rc-engage-agent-ept\nContact: <sip:s3a24848@vvl6rb2qvu1r.invalid;transport=ws>;expires=120\nAllow: ACK,CANCEL,INVITE,MESSAGE,BYE,OPTIONS,INFO,NOTIFY,REFER\nSupported: path, gruu, outbound\nUser-Agent: SIP.js/0.13.5.2;mozilla/5.0 (macintosh; intel mac os x 10_15_7) applewebkit/537.36 (khtml, like gecko) chrome/133.0.0.0 safari/537.36\nContent-Length: 0\n\n`);
+        const authHeader = `Digest algorithm=MD5, username="${userId}", realm="${realm}", nonce="${nonce}", uri="sip:sip.ringcentral.com", response="${authResponse}"`;
+        sendRegister(authHeader); // Send REGISTER with Authorization
       } else if (event.data.includes("200 OK")) {
         setResults((prev) => ({
           ...prev,
@@ -173,8 +186,8 @@ function Diagnostics() {
             2
           )} ms`,
         }));
-        ws.close(); // Close the WebSocket after successful registration
-        return; // Exit the function to prevent further processing
+        ws.close();
+        return;
       } else {
         setResults((prev) => ({
           ...prev,
@@ -183,19 +196,18 @@ function Diagnostics() {
       }
 
       detectBrowserIssues(messagesReceived, latency);
-      if(!event.data.includes("200 OK")){
+      if (!event.data.includes("200 OK")) {
         ws.close();
       }
     };
 
-
     ws.onerror = (error) => {
-  setResults((prev) => ({
-    ...prev,
-    testSIPWebSocket: `❌ FAIL - WebSocket connection failed: ${error.message || error}`,
-  }));
-  console.error("WebSocket error:", error); // Log the error to the console
-};
+      setResults((prev) => ({
+        ...prev,
+        testSIPWebSocket: `❌ FAIL - WebSocket connection failed: ${error.message || error}`,
+      }));
+      console.error("WebSocket error:", error);
+    };
   } catch (error) {
     setResults((prev) => ({
       ...prev,
@@ -203,29 +215,7 @@ function Diagnostics() {
     }));
   }
 };
-
-  const detectBrowserIssues = (messagesReceived, latency) => {
-    if (messagesReceived === 0) {
-      setResults((prev) => ({
-        ...prev,
-        performanceTest:
-          "❌ FAIL - Possible JavaScript execution issue or caching problem. Try clearing cache.",
-      }));
-    } else if (latency > 2000) {
-      setResults((prev) => ({
-        ...prev,
-        performanceTest: `⚠ WARNING - High WebSocket latency detected (${latency.toFixed(
-          2
-        )} ms). Possible browser performance issue.`,
-      }));
-    } else {
-      setResults((prev) => ({
-        ...prev,
-        performanceTest: "✅ PASS - Browser performance is normal.",
-      }));
-    }
-  };
-
+  
   return (
     <div>
       <h1>Network & Browser Diagnostics</h1>
