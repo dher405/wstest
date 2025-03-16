@@ -180,7 +180,7 @@ const testSIPWebSocket = async (
   tag
 ) => {
   try {
-    const ws = new WebSocket(websocketUrl);
+    const ws = new WebSocket(websocketUrl, "sip"); // Added "sip" as protocol
     let startTime = performance.now();
     let messagesReceived = 0;
     let cseq = 3581;
@@ -194,7 +194,7 @@ const testSIPWebSocket = async (
     const sendRegister = (authHeader) => {
       cseq++;
       viaBranch = `z9hG4bK${Math.random().toString(36).substring(2, 15)}`;
-      let message = `REGISTER sip:sip.ringcentral.com SIP/2.0\nVia: SIP/2.0/WSS vvl6rb2qvu1r.invalid;branch=<span class="math-inline">\{viaBranch\}\\nMax\-Forwards\: 70\\nTo\: "18885287464\*97568" <sip\:18885287464\*97568@sip\.ringcentral\.com\>\\nFrom\: "18885287464\*97568" <sip\:18885287464\*97568@sip\.ringcentral\.com\>;tag\=</span>{tag}\nCall-ID: ${callId}\nCSeq: ${cseq} REGISTER\nP-RC-Supported-Ept-Roles: rc-engage-agent-ept\nContact: <sip:s3a24848@vvl6rb2qvu1r.invalid;transport=ws>;expires=120\nAllow: ACK,CANCEL,INVITE,MESSAGE,BYE,OPTIONS,INFO,NOTIFY,REFER\nSupported: path, gruu, outbound\nUser-Agent: SIP.js/0.13.5.2;mozilla/5.0 (macintosh; intel mac os x 10_15_7) applewebkit/537.36 (khtml, like gecko) chrome/133.0.0.0 safari/537.36\nContent-Length: 0\n`;
+      let message = `REGISTER sip:sip.ringcentral.com SIP/2.0\nVia: SIP/2.0/WSS vvl6rb2qvu1r.invalid;branch=${viaBranch}\nMax-Forwards: 70\nTo: "18885287464*97568" <sip:18885287464*97568@sip.ringcentral.com>\nFrom: "18885287464*97568" <sip:18885287464*97568@sip.ringcentral.com>;tag=${tag}\nCall-ID: ${callId}\nCSeq: ${cseq} REGISTER\nP-RC-Supported-Ept-Roles: rc-engage-agent-ept\nContact: <sip:s3a24848@vvl6rb2qvu1r.invalid;transport=ws>;expires=120\nAllow: ACK,CANCEL,INVITE,MESSAGE,BYE,OPTIONS,INFO,NOTIFY,REFER\nSupported: path, gruu, outbound\nUser-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36\nContent-Length: 0\n`;
       if (authHeader) {
         message += `Authorization: ${authHeader}\n`;
       }
@@ -218,7 +218,7 @@ const testSIPWebSocket = async (
           realm,
           nonce
         );
-        const authHeader = `Digest algorithm=MD5, username="<span class="math-inline">\{userId\}", realm\="</span>{realm}", nonce="<span class="math-inline">\{nonce\}", uri\="sip\:sip\.ringcentral\.com", response\="</span>{authResponse}"`;
+        const authHeader = `Digest algorithm=MD5, username="${userId}", realm="${realm}", nonce="${nonce}", uri="sip:sip.ringcentral.com", response="${authResponse}"`;
         sendRegister(authHeader);
       } else if (event.data.includes("200 OK")) {
         setResults((prev) => ({
