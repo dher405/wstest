@@ -303,29 +303,29 @@ function Diagnostics() {
   };
 
   const runTests = async () => {
-    setLoading(true);
-    setResults({
-      networkStatus: "Checking...",
-      browserInfo: "Checking...",
-      testSIPWebSocket: "Checking...",
-      javascriptCacheTest: "Checking...",
-      performanceTest: "Checking...",
-      stunTest: "Checking...",
-    });
+  setLoading(true);
+  setResults({
+    networkStatus: "Checking...",
+    browserInfo: "Checking...",
+    testSIPWebSocket: "Checking...",
+    javascriptCacheTest: "Checking...",
+    performanceTest: "Checking...",
+    stunTest: "Checking...",
+  });
 
-    gatherBrowserInfo();
-    await testSTUNICE();
-    await testSIPWebSocket(
-      setResults,
-      websocketUrl,
-      userId,
-      password,
-      realm,
-      callId,
-      tag
-    );
-    setLoading(false);
-  };
+  gatherBrowserInfo();
+  await testSTUNICE();
+  await testSIPWebSocket(
+    setResults, // Pass setResults
+    websocketUrl,
+    userId,
+    password,
+    realm,
+    callId,
+    tag
+  );
+  setLoading(false);
+};
 
   const gatherBrowserInfo = () => {
     let jsEnabled =
