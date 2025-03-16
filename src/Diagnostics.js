@@ -257,7 +257,7 @@ const testSIPWebSocket = async (
 };
 
 const createAuthResponse = async (userId, password, realm, nonce) => {
-  const md5Hash = async (data) => {
+  const md5Hash = async (data) => { // Added 'async' here
     const encoder = new TextEncoder();
     const hashBuffer = await crypto.subtle.digest("MD5", encoder.encode(data));
     return Array.from(new Uint8Array(hashBuffer))
