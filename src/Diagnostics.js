@@ -53,10 +53,18 @@ function Diagnostics() {
     });
 
     gatherBrowserInfo();
-    await testSTUNICE();
-    await testSIPWebSocket();
-    setLoading(false);
-  };
+  await testSTUNICE();
+  await testSIPWebSocket(
+    setResults,
+    websocketUrl,
+    userId,
+    password,
+    realm,
+    callId,
+    tag
+  );
+  setLoading(false);
+};
 
   const gatherBrowserInfo = () => {
     let jsEnabled =
@@ -316,7 +324,7 @@ function Diagnostics() {
   gatherBrowserInfo();
   await testSTUNICE();
   await testSIPWebSocket(
-    setResults, // Pass setResults
+    setResults,
     websocketUrl,
     userId,
     password,
