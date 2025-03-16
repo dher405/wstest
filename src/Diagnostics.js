@@ -2,14 +2,16 @@ import React, { useState, useEffect } from "react";
 import "./Diagnostics.css";
 
 function Diagnostics() {
-  const websocketUrl = "wss://sip131-1111.ringcentral.com:8083/";
+  const websocketUrl = "wss://sip123-1211.ringcentral.com:8083/"; // Updated URL
   const stunServerUrl = "stun:stun1.eo1.engage.ringcentral.com:19302";
   const networkTestUrl = "https://www.google.com";
-  const userId = "803729045020";
-  const password = "j0IM3WpFzs";
+  const userId = "15378427020"; // Updated UserID
+  const password = "your_password"; // Replace with your password
   const realm = "sip.ringcentral.com";
+  const callId = "ht34kajl82l4ohq393i64h"; //Fixed Call ID
+  const tag = "hi63o1nb94"; //Fixed Tag
 
-  const [results, setResults] = useState({
+   const [results, setResults] = useState({
     networkStatus: "Pending...",
     browserInfo: "Pending...",
     testSIPWebSocket: "Pending...",
@@ -74,7 +76,7 @@ function Diagnostics() {
           }</p>
         `,
     }));
-
+    
     if (cacheSize !== "Unknown" && cacheSize > 100) {
       setResults((prev) => ({
         ...prev,
@@ -136,64 +138,69 @@ function Diagnostics() {
 
   const createAuthResponse = async (nonce) => {
     const ha1 = await md5Hash(`<span class="math-inline">\{userId\}\:</span>{realm}:${password}`);
-    const ha2 = await md5Hash("REGISTER:sip.sip.ringcentral.com");
+    const ha2 = await md5Hash("REGISTER:sip.ringcentral.com");
     return await md5Hash(`<span class="math-inline">\{ha1\}\:</span>{nonce}:${ha2}`);
   };
 
   const testSIPWebSocket = async () => {
-    try {
-      const ws = new WebSocket(websocketUrl);
-      let startTime = performance.now();
-      let messagesReceived = 0;
+  try {
+    const ws = new WebSocket(websocketUrl);
+    let startTime = performance.now();
+    let messagesReceived = 0;
+    let cseq = 3581; // Start CSeq
 
-      ws.onopen = () => {
-        ws.send(`REGISTER sip:sip.ringcentral.com SIP/2.0\n\n`);
-      };
+    ws.onopen = () => {
+      cseq++;
+      ws.send(`REGISTER sip:sip.ringcentral.com SIP/2.0\nVia: SIP/2.0/WSS vvl6rb2qvu1r.invalid;branch=z9hG4bK${Math.random().toString(36).substring(2, 15)}\nMax-Forwards: 70\nTo: "18885287464*97568" <sip:18885287464*97568@sip.ringcentral.com>\nFrom: "18885287464*97568" <sip:18885287464*97568@sip.ringcentral.com>;tag=${tag}\nCall-ID: ${callId}\nCSeq: ${cseq} REGISTER\nP-RC-Supported-Ept-Roles: rc-engage-agent-ept\nContact: <sip:s3a24848@vvl6rb2qvu1r.invalid;transport=ws>;expires=120\nAllow: ACK,CANCEL,INVITE,MESSAGE,BYE,OPTIONS,INFO,NOTIFY,REFER\nSupported: path, gruu, outbound\nUser-Agent: SIP.js/0.13.5.2;mozilla/5.0 (macintosh; intel mac os x 10_15_7) applewebkit/537.36 (khtml, like gecko) chrome/133.0.0.0 safari/537.36\nContent-Length: 0\n\n`);
+    };
 
-      ws.onmessage = async (event) => {
-        messagesReceived++;
-        let latency = performance.now() - startTime;
+    ws.onmessage = async (event) => {
+      messagesReceived++;
+      let latency = performance.now() - startTime;
 
-        if (event.data.includes("401 Unauthorized")) {
-          const nonceStart = event.data.indexOf('nonce="') + 7;
-          const nonceEnd = event.data.indexOf('"', nonceStart);
-          const nonce = event.data.substring(nonceStart, nonceEnd);
-          const authResponse = await createAuthResponse(nonce);
+      if (event.data.includes("401 Unauthorized")) {
+        const nonceStart = event.data.indexOf('nonce="') + 7;
+        const nonceEnd = event.data.indexOf('"', nonceStart);
+        const nonce = event.data.substring(nonceStart, nonceEnd);
+        const authResponse = await createAuthResponse(nonce);
+        cseq++;
 
-          ws.send(
-            `REGISTER sip:sip.ringcentral.com SIP/2.0\nAuthorization: Digest algorithm=MD5, username="<span class="math-inline">\{userId\}", realm\="</span>{realm}", nonce="<span class="math-inline">\{nonce\}", uri\="sip\:sip\.ringcentral\.com", response\="</span>{authResponse}"\n\n`
-          );
-        } else if (event.data.includes("200 OK")) {
-          setResults((prev) => ({
-            ...prev,
-            testSIPWebSocket: `✅ PASS - SIP WebSocket connected and registered successfully.<br><strong>Latency:</strong> ${latency.toFixed(
-              2
-            )} ms`,
-          }));
-        } else {
-          setResults((prev) => ({
-            ...prev,
-            testSIPWebSocket: `⚠ WARNING - Unexpected WebSocket response.`,
-          }));
-        }
-
-        detectBrowserIssues(messagesReceived, latency);
-        ws.close();
-      };
-
-      ws.onerror = () => {
+        ws.send(`REGISTER sip:sip.ringcentral.com SIP/2.0\nVia: SIP/2.0/WSS vvl6rb2qvu1r.invalid;branch=z9hG4bK${Math.random().toString(36).substring(2, 15)}\nMax-Forwards: 70\nTo: "18885287464*97568" <sip:18885287464*97568@sip.ringcentral.com>\nFrom: "18885287464*97568" <sip:18885287464*97568@sip.ringcentral.com>;tag=${tag}\nCall-ID: ${callId}\nCSeq: ${cseq} REGISTER\nAuthorization: Digest algorithm=MD5, username="${userId}", realm="${realm}", nonce="${nonce}", uri="sip:sip.ringcentral.com", response="${authResponse}"\nP-RC-Supported-Ept-Roles: rc-engage-agent-ept\nContact: <sip:s3a24848@vvl6rb2qvu1r.invalid;transport=ws>;expires=120\nAllow: ACK,CANCEL,INVITE,MESSAGE,BYE,OPTIONS,INFO,NOTIFY,REFER\nSupported: path, gruu, outbound\nUser-Agent: SIP.js/0.13.5.2;mozilla/5.0 (macintosh; intel mac os x 10_15_7) applewebkit/537.36 (khtml, like gecko) chrome/133.0.0.0 safari/537.36\nContent-Length: 0\n\n`);
+      } else if (event.data.includes("200 OK")) {
         setResults((prev) => ({
           ...prev,
-          testSIPWebSocket: "❌ FAIL - WebSocket connection failed.",
+          testSIPWebSocket: `✅ PASS - SIP WebSocket connected and registered successfully.<br><strong>Latency:</strong> ${latency.toFixed(
+            2
+          )} ms`,
         }));
-      };
-    } catch (error) {
+        ws.close(); // Close the WebSocket after successful registration
+        return; // Exit the function to prevent further processing
+      } else {
+        setResults((prev) => ({
+          ...prev,
+          testSIPWebSocket: `⚠ WARNING - Unexpected WebSocket response: ${event.data}`,
+        }));
+      }
+
+      detectBrowserIssues(messagesReceived, latency);
+      if(!event.data.includes("200 OK")){
+        ws.close();
+      }
+    };
+
+    ws.onerror = () => {
       setResults((prev) => ({
         ...prev,
-        testSIPWebSocket: `❌ FAIL - WebSocket test error: ${error.message}`,
+        testSIPWebSocket: "❌ FAIL - WebSocket connection failed.",
       }));
-    }
-  };
+    };
+  } catch (error) {
+    setResults((prev) => ({
+      ...prev,
+      testSIPWebSocket: `❌ FAIL - WebSocket test error: ${error.message}`,
+    }));
+  }
+};
 
   const detectBrowserIssues = (messagesReceived, latency) => {
     if (messagesReceived === 0) {
