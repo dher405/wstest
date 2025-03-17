@@ -42,18 +42,19 @@ const STUNWebSocketTest = () => {
             const ipMatch = event.candidate.candidate.match(/([0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3})/);
             const portMatch = event.candidate.candidate.match(/([0-9]+)$/);
             if (ipMatch && portMatch) {
-                setExternalIP(ipMatch[1]);
-                setExternalPort(parseInt(portMatch[1]));
-                
                 logMessage(`STUN Resolved External IP: ${ipMatch[1]}, Port: ${portMatch[1]}`);
 
-                // ✅ Ensure STUN is marked successful before closing the connection
+                // ✅ Update state before proceeding
                 setStunSuccess(true);
+                setExternalIP(ipMatch[1]);
+                setExternalPort(parseInt(portMatch[1]));
+
+                // ✅ Delay WebSocket connection to ensure state updates
+                setTimeout(() => {
+                    connectWebSocket(ipMatch[1], parseInt(portMatch[1]));
+                }, 100); 
 
                 pc.close();
-
-                // ✅ Proceed to WebSocket connection
-                connectWebSocket(ipMatch[1], parseInt(portMatch[1]));
                 return;
             }
         }
@@ -67,7 +68,6 @@ const STUNWebSocketTest = () => {
         }
     };
 }
-
 
     setupDTLS();
   }, []);
