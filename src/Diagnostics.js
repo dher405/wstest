@@ -12,23 +12,42 @@ const WS_SERVER = "wss://sip123-1211.ringcentral.com:8083";
 const STUNWebSocketTest = () => {
   const [logs, setLogs] = useState([]);
   const [externalIP, setExternalIP] = useState(null);
+  const [externalPort, setExternalPort] = useState(null);
   const [stunSuccess, setStunSuccess] = useState(false);
+  const [dtlsSuccess, setDtlsSuccess] = useState(false);
   const [webSocketStatus, setWebSocketStatus] = useState("Not Connected");
 
   useEffect(() => {
-    async function getSTUNAddress() {
+    async function setupDTLS() {
+      logMessage("Attempting DTLS handshake before STUN...");
+      try {
+        const pc = new RTCPeerConnection({
+          iceServers: STUN_SERVERS.map(url => ({ urls: url })),
+          dtlsTransportPolicy: "require"
+        });
+        pc.createDataChannel("test");
+        await pc.createOffer().then((offer) => pc.setLocalDescription(offer));
+        setDtlsSuccess(true);
+        logMessage("DTLS handshake successful.");
+        setupSTUN(pc);
+      } catch (error) {
+        logMessage(`DTLS handshake failed: ${error.message}`);
+      }
+    }
+
+    async function setupSTUN(pc) {
       logMessage("Attempting to set up STUN connection...");
-      const pc = new RTCPeerConnection({ iceServers: STUN_SERVERS.map(url => ({ urls: url })) });
-      
       pc.onicecandidate = (event) => {
         if (event.candidate) {
           const ipMatch = event.candidate.candidate.match(/([0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3})/);
-          if (ipMatch) {
+          const portMatch = event.candidate.candidate.match(/([0-9]+)$/);
+          if (ipMatch && portMatch) {
             setExternalIP(ipMatch[1]);
+            setExternalPort(parseInt(portMatch[1]));
             setStunSuccess(true);
-            logMessage(`STUN Resolved External IP: ${ipMatch[1]}`);
+            logMessage(`STUN Resolved External IP: ${ipMatch[1]}, Port: ${portMatch[1]}`);
             pc.close();
-            connectWebSocket(ipMatch[1]);
+            connectWebSocket(ipMatch[1], parseInt(portMatch[1]));
           }
         }
       };
@@ -40,32 +59,32 @@ const STUNWebSocketTest = () => {
           pc.close();
         }
       };
-
-      try {
-        await pc.createOffer().then((offer) => pc.setLocalDescription(offer));
-      } catch (error) {
-        setStunSuccess(false);
-        logMessage(`STUN connection error: ${error.message}`);
-        pc.close();
-      }
     }
 
-    getSTUNAddress();
+    setupDTLS();
   }, []);
 
-  function connectWebSocket(ip) {
+  function connectWebSocket(ip, port) {
     if (!stunSuccess) {
       logMessage("Skipping WebSocket connection as STUN setup failed.");
       return;
     }
 
-    logMessage(`Attempting WebSocket connection to ${WS_SERVER} over STUN-resolved IP: ${ip}...`);
+    logMessage(`Attempting WebSocket connection to ${WS_SERVER} over STUN-resolved IP: ${ip}:${port}...`);
     
-    const ws = new WebSocket(WS_SERVER);
-    
+    const ws = new WebSocket(WS_SERVER, [], {
+      headers: {
+        'Upgrade': 'websocket',
+        'Connection': 'Upgrade',
+        'Sec-WebSocket-Key': 'dGhlIHNhbXBsZSBub25jZQ==',
+        'Sec-WebSocket-Version': '13',
+        'Origin': 'https://ringcx.ringcentral.com'
+      }
+    });
+
     ws.onopen = () => {
       setWebSocketStatus("Connected");
-      logMessage(`WebSocket connection established to ${WS_SERVER}.`);
+      logMessage(`WebSocket connection established to ${WS_SERVER} from ${ip}:${port}.`);
       ws.send("PING");
     };
 
@@ -90,8 +109,10 @@ const STUNWebSocketTest = () => {
 
   return (
     <div style={{ padding: "20px", fontFamily: "Arial" }}>
-      <h2>STUN & WebSocket Connection Test</h2>
+      <h2>DTLS, STUN & WebSocket Connection Test</h2>
+      <p><strong>DTLS Status:</strong> {dtlsSuccess ? "Success" : "Failed"}</p>
       <p><strong>External IP:</strong> {externalIP || "Fetching..."}</p>
+      <p><strong>External Port:</strong> {externalPort || "Fetching..."}</p>
       <p><strong>STUN Status:</strong> {stunSuccess ? "Success" : "Failed"}</p>
       <p><strong>WebSocket Status:</strong> {webSocketStatus}</p>
       <h3>Logs:</h3>
