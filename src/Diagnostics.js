@@ -59,13 +59,13 @@ const STUNWebSocketTest = () => {
       return;
     }
 
-    logMessage("Attempting WebSocket connection over STUN-resolved IP...");
+    logMessage(`Attempting WebSocket connection to ${WS_SERVER} over STUN-resolved IP: ${ip}...`);
     
     const ws = new WebSocket(WS_SERVER);
     
     ws.onopen = () => {
       setWebSocketStatus("Connected");
-      logMessage("WebSocket connection established.");
+      logMessage(`WebSocket connection established to ${WS_SERVER}.`);
       ws.send("PING");
     };
 
@@ -80,7 +80,7 @@ const STUNWebSocketTest = () => {
 
     ws.onclose = () => {
       setWebSocketStatus("Closed");
-      logMessage("WebSocket connection closed.");
+      logMessage(`WebSocket connection to ${WS_SERVER} closed.`);
     };
   }
 
@@ -105,3 +105,4 @@ const STUNWebSocketTest = () => {
 };
 
 export default STUNWebSocketTest;
+
