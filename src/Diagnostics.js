@@ -73,43 +73,42 @@ const STUNWebSocketTest = () => {
   }, []);
 
   function connectWebSocket(ip, port) {
+    logMessage(`Checking STUN success before WebSocket connection...`);
+
+    // ✅ Ensure STUN was successful before proceeding
     if (!stunSuccess) {
-      logMessage("Skipping WebSocket connection as STUN setup failed.");
-      return;
+        logMessage("Skipping WebSocket connection as STUN setup failed.");
+        return;
     }
 
     logMessage(`Attempting WebSocket connection to ${WS_SERVER} over STUN-resolved IP: ${ip}:${port}...`);
     
-    const ws = new WebSocket(WS_SERVER, [], {
-      headers: {
-        'Upgrade': 'websocket',
-        'Connection': 'Upgrade',
-        'Sec-WebSocket-Key': 'dGhlIHNhbXBsZSBub25jZQ==',
-        'Sec-WebSocket-Version': '13',
-        'Origin': 'https://ringcx.ringcentral.com'
-      }
-    });
+    try {
+        const ws = new WebSocket(WS_SERVER);
 
-    ws.onopen = () => {
-      setWebSocketStatus("Connected");
-      logMessage(`WebSocket connection established to ${WS_SERVER} from ${ip}:${port}.`);
-      ws.send("PING");
-    };
+        ws.onopen = () => {
+            setWebSocketStatus("Connected");
+            logMessage(`WebSocket connection established to ${WS_SERVER} from ${ip}:${port}.`);
+            ws.send("PING");
+        };
 
-    ws.onmessage = (event) => {
-      logMessage(`WebSocket Response: ${event.data}`);
-    };
+        ws.onmessage = (event) => {
+            logMessage(`WebSocket Response: ${event.data}`);
+        };
 
-    ws.onerror = (error) => {
-      setWebSocketStatus("Error");
-      logMessage(`WebSocket Error: ${error.message}`);
-    };
+        ws.onerror = (error) => {
+            setWebSocketStatus("Error");
+            logMessage(`WebSocket Error: ${error.message}`);
+        };
 
-    ws.onclose = () => {
-      setWebSocketStatus("Closed");
-      logMessage(`WebSocket connection to ${WS_SERVER} closed.`);
-    };
-  }
+        ws.onclose = () => {
+            setWebSocketStatus("Closed");
+            logMessage(`WebSocket connection to ${WS_SERVER} closed.`);
+        };
+    } catch (error) {
+        logMessage(`WebSocket connection failed: ${error.message}`);
+    }
+}
 
   function logMessage(message) {
     setLogs(prevLogs => [...prevLogs, message]);
