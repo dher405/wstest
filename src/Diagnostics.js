@@ -36,30 +36,38 @@ const STUNWebSocketTest = () => {
     }
 
     async function setupSTUN(pc) {
-      logMessage("Attempting to set up STUN connection...");
-      pc.onicecandidate = (event) => {
+    logMessage("Attempting to set up STUN connection...");
+    pc.onicecandidate = (event) => {
         if (event.candidate) {
-          const ipMatch = event.candidate.candidate.match(/([0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3})/);
-          const portMatch = event.candidate.candidate.match(/([0-9]+)$/);
-          if (ipMatch && portMatch) {
-            setExternalIP(ipMatch[1]);
-            setExternalPort(parseInt(portMatch[1]));
-            setStunSuccess(true);
-            logMessage(`STUN Resolved External IP: ${ipMatch[1]}, Port: ${portMatch[1]}`);
-            pc.close();
-            connectWebSocket(ipMatch[1], parseInt(portMatch[1]));
-          }
+            const ipMatch = event.candidate.candidate.match(/([0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3})/);
+            const portMatch = event.candidate.candidate.match(/([0-9]+)$/);
+            if (ipMatch && portMatch) {
+                setExternalIP(ipMatch[1]);
+                setExternalPort(parseInt(portMatch[1]));
+                
+                logMessage(`STUN Resolved External IP: ${ipMatch[1]}, Port: ${portMatch[1]}`);
+
+                // ✅ Ensure STUN is marked successful before closing the connection
+                setStunSuccess(true);
+
+                pc.close();
+
+                // ✅ Proceed to WebSocket connection
+                connectWebSocket(ipMatch[1], parseInt(portMatch[1]));
+                return;
+            }
         }
-      };
-      
-      pc.oniceconnectionstatechange = () => {
+    };
+
+    pc.oniceconnectionstatechange = () => {
         if (pc.iceConnectionState === "failed") {
-          setStunSuccess(false);
-          logMessage("STUN connection failed.");
-          pc.close();
+            setStunSuccess(false);
+            logMessage("STUN connection failed.");
+            pc.close();
         }
-      };
-    }
+    };
+}
+
 
     setupDTLS();
   }, []);
