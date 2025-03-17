@@ -12,10 +12,12 @@ const WS_SERVER = "wss://sip123-1211.ringcentral.com:8083";
 const STUNWebSocketTest = () => {
   const [logs, setLogs] = useState([]);
   const [externalIP, setExternalIP] = useState(null);
+  const [stunSuccess, setStunSuccess] = useState(false);
   const [webSocketStatus, setWebSocketStatus] = useState("Not Connected");
 
   useEffect(() => {
     async function getSTUNAddress() {
+      logMessage("Attempting to set up STUN connection...");
       const pc = new RTCPeerConnection({ iceServers: STUN_SERVERS.map(url => ({ urls: url })) });
       
       pc.onicecandidate = (event) => {
@@ -23,6 +25,7 @@ const STUNWebSocketTest = () => {
           const ipMatch = event.candidate.candidate.match(/([0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3})/);
           if (ipMatch) {
             setExternalIP(ipMatch[1]);
+            setStunSuccess(true);
             logMessage(`STUN Resolved External IP: ${ipMatch[1]}`);
             pc.close();
             connectWebSocket(ipMatch[1]);
@@ -30,14 +33,33 @@ const STUNWebSocketTest = () => {
         }
       };
       
-      await pc.createOffer().then((offer) => pc.setLocalDescription(offer));
+      pc.oniceconnectionstatechange = () => {
+        if (pc.iceConnectionState === "failed") {
+          setStunSuccess(false);
+          logMessage("STUN connection failed.");
+          pc.close();
+        }
+      };
+
+      try {
+        await pc.createOffer().then((offer) => pc.setLocalDescription(offer));
+      } catch (error) {
+        setStunSuccess(false);
+        logMessage(`STUN connection error: ${error.message}`);
+        pc.close();
+      }
     }
 
     getSTUNAddress();
   }, []);
 
   function connectWebSocket(ip) {
-    logMessage("Attempting WebSocket connection...");
+    if (!stunSuccess) {
+      logMessage("Skipping WebSocket connection as STUN setup failed.");
+      return;
+    }
+
+    logMessage("Attempting WebSocket connection over STUN-resolved IP...");
     
     const ws = new WebSocket(WS_SERVER);
     
@@ -70,6 +92,7 @@ const STUNWebSocketTest = () => {
     <div style={{ padding: "20px", fontFamily: "Arial" }}>
       <h2>STUN & WebSocket Connection Test</h2>
       <p><strong>External IP:</strong> {externalIP || "Fetching..."}</p>
+      <p><strong>STUN Status:</strong> {stunSuccess ? "Success" : "Failed"}</p>
       <p><strong>WebSocket Status:</strong> {webSocketStatus}</p>
       <h3>Logs:</h3>
       <div style={{ background: "#f4f4f4", padding: "10px", borderRadius: "5px", maxHeight: "200px", overflowY: "auto" }}>
@@ -82,4 +105,3 @@ const STUNWebSocketTest = () => {
 };
 
 export default STUNWebSocketTest;
-
