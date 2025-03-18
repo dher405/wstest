@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from "react";
 
 const STUN_SERVERS = [
-  "stun:wcm-ev-p02-eo1.engage.ringcentral.com:19302" // Use WebSocket server for STUN
+  "stun1.eo1.engage.ringcentral.com:19302",
+    "stun2.eo1.engage.ringcentral.com:19302",
+    "stun3.eo1.engage.ringcentral.com:19302"
 ];
 
 const WS_SERVER_BASE = "wss://wcm-ev-p02-eo1.engage.ringcentral.com:8080";
