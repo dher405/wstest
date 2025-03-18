@@ -37,33 +37,35 @@ const STUNWebSocketTest = () => {
     }
 
     async function setupSTUN(pc) {
-      logMessage("Attempting to set up STUN connection...");
-      pc.onicecandidate = (event) => {
+    logMessage("Attempting to set up STUN connection with WebSocket server...");
+    pc.onicecandidate = (event) => {
         if (event.candidate) {
-          const ipMatch = event.candidate.candidate.match(/([0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3})/);
-          const portMatch = event.candidate.candidate.match(/([0-9]+)$/);
-          if (ipMatch && portMatch) {
-            logMessage(`STUN Resolved External IP: ${ipMatch[1]}, Port: ${portMatch[1]}`);
-            setExternalIP(ipMatch[1]);
-            setExternalPort(parseInt(portMatch[1]));
-            setStunSuccess(true);
-            setTimeout(() => {
-              connectWebSocket(ipMatch[1], parseInt(portMatch[1]));
-            }, 100);
-            pc.close();
-            return;
-          }
-        }
-      };
+            const ipMatch = event.candidate.candidate.match(/([0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3})/);
+            const portMatch = event.candidate.candidate.match(/([0-9]+)$/);
+            if (ipMatch && portMatch) {
+                logMessage(`STUN Resolved External IP: ${ipMatch[1]}, Port: ${portMatch[1]}`);
+                setExternalIP(ipMatch[1]);
+                setExternalPort(parseInt(portMatch[1]));
+                setStunSuccess(true);
 
-      pc.oniceconnectionstatechange = () => {
-        if (pc.iceConnectionState === "failed") {
-          setStunSuccess(false);
-          logMessage("STUN connection failed.");
-          pc.close();
+                // ✅ Ensure WebSocket uses the same resolved STUN server connection
+                setTimeout(() => {
+                    connectWebSocket(ipMatch[1], parseInt(portMatch[1]));
+                }, 100);
+                pc.close();
+                return;
+            }
         }
-      };
-    }
+    };
+
+    pc.oniceconnectionstatechange = () => {
+        if (pc.iceConnectionState === "failed") {
+            setStunSuccess(false);
+            logMessage("STUN connection failed.");
+            pc.close();
+        }
+    };
+}
 
     setupDTLS();
   }, []);
