@@ -71,38 +71,49 @@ const STUNWebSocketTest = () => {
   function connectWebSocket(ip, port) {
     logMessage(`Attempting WebSocket connection to ${WS_SERVER_BASE} from ${ip}:${port}...`);
 
+    const WebSocket = require("ws");
+
     const accessToken = "eyJhbGciOiJSUzI1NiJ9.eyJhZ250IjpbMTUyOTg2XSwiYWdudC1hY2MiOnsiMTUyOTg2IjoiMjEyNzAwMDEifSwiZW1iZCI6ZmFsc2UsInJjYWMiOiIzNzQzOTUxMCIsImVzdSI6ZmFsc2UsImxhcHAiOiJTU08iLCJmbHIiOmZhbHNlLCJzc28iOnRydWUsInJjaWQiOjE5MTgwOTYwMDgsInBsYXQiOiJldi1wMDIiLCJhY2N0IjoiMjEyNzAwMDAiLCJleHAiOjE3NDIxODA5Nzl9.BCX5N73WAsmQZrHR4JyTWO-0g8wvujFy0haQZdXycoGjcfDL0OnFltvTNsewUhN3_camJv2zw1yNvCYB095GxocZNhFhRi5JFk-fQqsxVtctgqp1xeKM_OkQQb-3Fghblp2ss0KlrymzMyB7Yo3Io_rUAmlMwSzhoCKU1B2KffwWNnYGzRUfw79n_VIw_4tAub0nzbhYqumdUDz-9uGuk2Bb8F7rgw_vAkkYicoQncCI52pPQlV-dIktRcnQIVnnHsLigUvBmyAHKdVkjcapkSqTwNfdBLSenCxZ2i166j5-O63bIivjHSxjOVdH9fiCxgl3MDwai0Kmtilgv-KcwA";
     const agentId = "152986";
     const clientRequestId = "EAG:08415eb6-311a-7639-ad11-d6f25746aa36";
-    const wsUrl = `${WS_SERVER_BASE}/?access_token=${encodeURIComponent(accessToken)}&agent_id=${agentId}&x-engage-client-request-id=${clientRequestId}`;
+    const wsUrl = `wss://wcm-ev-p02-eo1.engage.ringcentral.com:8080/?access_token=${encodeURIComponent(accessToken)}&agent_id=${agentId}&x-engage-client-request-id=${clientRequestId}`;
 
-    try {
-      ws = new WebSocket(wsUrl);
+const headers = {
+  "Host": "wcm-ev-p02-eo1.engage.ringcentral.com:8080",
+  "Connection": "Upgrade",
+  "Pragma": "no-cache",
+  "Cache-Control": "no-cache",
+  "Upgrade": "websocket",
+  "Origin": "https://ringcx.ringcentral.com",
+  "Sec-WebSocket-Version": "13",
+  "Sec-WebSocket-Key": "dGhlIHNhbXBsZSBub25jZQ==",  // Required for WebSocket handshake
+  "Sec-WebSocket-Extensions": "permessage-deflate; client_max_window_bits",
+  "Accept-Encoding": "gzip, deflate, br, zstd",
+  "Accept-Language": "en-US,en;q=0.9",
+  "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36"
+};
 
-      ws.onopen = () => {
-        setWebSocketStatus("Connected");
-        logMessage(`WebSocket connection established to ${wsUrl} from ${ip}:${port}.`);
-        ws.send("PING");
-        sendTestUDPPackets();
-      };
+// Explicitly send GET request before upgrading connection
+const ws = new WebSocket(wsUrl, {
+  headers
+});
 
-      ws.onmessage = (event) => {
-        logMessage(`WebSocket Response: ${event.data}`);
-      };
+ws.on("open", () => {
+  console.log("✅ WebSocket connection established!");
+  ws.send("PING");
+});
 
-      ws.onerror = (error) => {
-        setWebSocketStatus("Error");
-        logMessage(`WebSocket Error: ${error.message}`);
-      };
+ws.on("message", (data) => {
+  console.log("📩 Received message:", data);
+});
 
-      ws.onclose = () => {
-        setWebSocketStatus("Closed");
-        logMessage(`WebSocket connection to ${wsUrl} closed.`);
-      };
-    } catch (error) {
-      logMessage(`WebSocket connection failed: ${error.message}`);
-    }
-  }
+ws.on("error", (error) => {
+  console.error("❌ WebSocket error:", error);
+});
+
+ws.on("close", () => {
+  console.log("🔴 WebSocket connection closed.");
+});
 
   function sendTestUDPPackets() {
     if (ws && ws.readyState === WebSocket.OPEN) {
