@@ -16,6 +16,8 @@ const STUNWebSocketTest = () => {
   const [stunSuccess, setStunSuccess] = useState(false);
   const [dtlsSuccess, setDtlsSuccess] = useState(false);
   const [webSocketStatus, setWebSocketStatus] = useState("Not Connected");
+  const [latency, setLatency] = useState(null);
+  const [browserInfo, setBrowserInfo] = useState("");
   const ws = useRef(null);
 
   const logMessage = (message) => {
@@ -24,9 +26,15 @@ const STUNWebSocketTest = () => {
   };
 
   useEffect(() => {
+    // Capture Browser & OS Information
+    const userAgent = navigator.userAgent;
+    setBrowserInfo(userAgent);
+    logMessage(`Browser Info: ${userAgent}`);
+
     const setupDTLS = async () => {
       logMessage("Attempting DTLS handshake before STUN...");
       try {
+        const start = performance.now();
         const pc = new RTCPeerConnection({
           iceServers: STUN_SERVERS.map((url) => ({ urls: url })),
           dtlsTransportPolicy: "require",
@@ -34,7 +42,9 @@ const STUNWebSocketTest = () => {
         pc.createDataChannel("test");
         await pc.createOffer().then((offer) => pc.setLocalDescription(offer));
         setDtlsSuccess(true);
-        logMessage("DTLS handshake successful.");
+        const end = performance.now();
+        setLatency(end - start);
+        logMessage(`DTLS handshake successful. Latency: ${(end - start).toFixed(2)}ms`);
         setupSTUN(pc);
       } catch (error) {
         logMessage(`DTLS handshake failed: ${error.message}`);
@@ -121,10 +131,12 @@ const STUNWebSocketTest = () => {
     <div style={{ padding: "20px", fontFamily: "Arial" }}>
       <h2>DTLS, STUN & WebSocket Connection Test</h2>
       <p><strong>DTLS Status:</strong> {dtlsSuccess ? "Success" : "Failed"}</p>
+      <p><strong>Latency:</strong> {latency ? `${latency.toFixed(2)} ms` : "Measuring..."}</p>
       <p><strong>External IP:</strong> {externalIP || "Fetching..."}</p>
       <p><strong>External Port:</strong> {externalPort || "Fetching..."}</p>
       <p><strong>STUN Status:</strong> {stunSuccess ? "Success" : "Failed"}</p>
       <p><strong>WebSocket Status:</strong> {webSocketStatus}</p>
+      <p><strong>Browser Info:</strong> {browserInfo}</p>
       <pre>{logs.length > 0 ? logs.join("\n") : "No logs yet..."}</pre>
     </div>
   );
