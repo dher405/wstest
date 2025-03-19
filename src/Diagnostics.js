@@ -88,32 +88,33 @@ const STUNWebSocketTest = () => {
     ws.current = new WebSocket(wsUrl, "sip");
 
     ws.current.onopen = () => {
-  setWebSocketStatus("Connected");
-  logMessage(`✅ WebSocket connection established.`);
-  
-  // Wait briefly before sending "PING" to ensure connection is stable
-  setTimeout(() => {
-    if (ws.current.readyState === WebSocket.OPEN) {
-      ws.current.send("PING");
-      logMessage("📨 Sent: PING");
-    } else {
-      logMessage("⚠️ WebSocket not ready, skipping PING.");
-    }
-  }, 500); // 500ms delay to allow full connection setup
-};
+      setWebSocketStatus("Connected");
+      logMessage(`✅ WebSocket connection established.`);
+      
+      setTimeout(() => {
+        if (ws.current.readyState === WebSocket.OPEN) {
+          const registerMessage = "REGISTER sip:server.com SIP/2.0\r\nVia: SIP/2.0/WSS client.invalid;branch=z9hG4bK776asdhds\r\nMax-Forwards: 70\r\nTo: <sip:server.com>\r\nFrom: <sip:user@server.com>;tag=49583\r\nCall-ID: 1234567890@client.invalid\r\nCSeq: 1 REGISTER\r\nContact: <sip:user@server.com>\r\nExpires: 600\r\nContent-Length: 0\r\n\r\n";
+          ws.current.send(registerMessage);
+          logMessage("📨 Sent: REGISTER request");
+        } else {
+          logMessage("⚠️ WebSocket not ready, skipping REGISTER request.");
+        }
+      }, 500);
+    };
 
     ws.current.onmessage = (event) => {
-  logMessage(`📩 WebSocket Response: ${event.data}`);
-};
+      logMessage(`📩 WebSocket Response: ${event.data}`);
+    };
 
     ws.current.onerror = (error) => {
       setWebSocketStatus("Error");
       logMessage(`❌ WebSocket Error: ${error.message}`);
     };
+
     ws.current.onclose = (event) => {
-  setWebSocketStatus("Closed");
-  logMessage(`🔴 WebSocket closed. Code: ${event.code}, Reason: ${event.reason || "No reason provided"}`);
-};
+      setWebSocketStatus("Closed");
+      logMessage(`🔴 WebSocket closed. Code: ${event.code}, Reason: ${event.reason || "No reason provided"}`);
+    };
   };
 
   return (
@@ -130,3 +131,4 @@ const STUNWebSocketTest = () => {
 };
 
 export default STUNWebSocketTest;
+
