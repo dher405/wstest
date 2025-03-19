@@ -27,72 +27,11 @@ const STUNWebSocketTest = () => {
   };
 
   useEffect(() => {
-    // Capture Browser & OS Information
     const userAgent = navigator.userAgent;
     setBrowserInfo(userAgent);
     logMessage(`Browser Info: ${userAgent}`);
-
-    // Check browser cache health
     checkCacheHealth();
-
-    const setupDTLS = async () => {
-      logMessage("Attempting DTLS handshake before STUN...");
-      try {
-        const start = performance.now();
-        const pc = new RTCPeerConnection({
-          iceServers: STUN_SERVERS.map((url) => ({ urls: url })),
-          dtlsTransportPolicy: "require",
-        });
-        pc.createDataChannel("test");
-        await pc.createOffer().then((offer) => pc.setLocalDescription(offer));
-        setDtlsSuccess(true);
-        const end = performance.now();
-        const dtlsLatency = end - start;
-        setLatency(dtlsLatency);
-        logMessage(`DTLS handshake successful. Latency: ${dtlsLatency.toFixed(2)}ms`);
-        if (dtlsLatency > 1000) {
-          logMessage("⚠️ Possible network delay detected during DTLS handshake.");
-        }
-        setupSTUN(pc);
-      } catch (error) {
-        logMessage(`DTLS handshake failed: ${error.message}`);
-      }
-    };
-
-    const setupSTUN = async (pc) => {
-      logMessage("Attempting to set up STUN connection...");
-      pc.onicecandidate = (event) => {
-        if (event.candidate) {
-          const ipMatch = event.candidate.candidate.match(
-            /(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/
-          );
-          const portMatch = event.candidate.candidate.match(/(\d+)$/);
-          if (ipMatch && portMatch) {
-            const ip = ipMatch[1];
-            const port = parseInt(portMatch[1]);
-            logMessage(`STUN Resolved External IP: ${ip}, Port: ${port}`);
-            setExternalIP(ip);
-            setExternalPort(port);
-            setStunSuccess(true);
-            setTimeout(() => {
-              connectWebSocket(ip, port);
-            }, 100);
-            pc.close();
-          }
-        }
-      };
-      
-      pc.oniceconnectionstatechange = () => {
-        if (pc.iceConnectionState === "failed") {
-          setStunSuccess(false);
-          logMessage("STUN connection failed.");
-          pc.close();
-        }
-      };
-    };
-
     setupDTLS();
-
     return () => {
       if (ws.current) {
         ws.current.close();
@@ -120,6 +59,15 @@ const STUNWebSocketTest = () => {
     ws.current.onopen = () => {
       setWebSocketStatus("Connected");
       logMessage(`✅ WebSocket connection established.`);
+      setTimeout(() => {
+        if (ws.current.readyState === WebSocket.OPEN) {
+          const registerMessage = "REGISTER sip:server.com SIP/2.0\r\nVia: SIP/2.0/WSS client.invalid;branch=z9hG4bK776asdhds\r\nMax-Forwards: 70\r\nTo: <sip:server.com>\r\nFrom: <sip:user@server.com>;tag=49583\r\nCall-ID: 1234567890@client.invalid\r\nCSeq: 1 REGISTER\r\nContact: <sip:user@server.com>\r\nExpires: 600\r\nContent-Length: 0\r\n\r\n";
+          ws.current.send(registerMessage);
+          logMessage("📨 Sent: REGISTER request");
+        } else {
+          logMessage("⚠️ WebSocket not ready, skipping REGISTER request.");
+        }
+      }, 500);
     };
 
     ws.current.onmessage = (event) => {
