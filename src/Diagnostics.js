@@ -88,10 +88,20 @@ const STUNWebSocketTest = () => {
     ws.current = new WebSocket(wsUrl, "sip");
 
     ws.current.onopen = () => {
-      setWebSocketStatus("Connected");
-      logMessage(`✅ WebSocket connection established.`);
+  setWebSocketStatus("Connected");
+  logMessage(`✅ WebSocket connection established.`);
+  
+  // Wait briefly before sending "PING" to ensure connection is stable
+  setTimeout(() => {
+    if (ws.current.readyState === WebSocket.OPEN) {
       ws.current.send("PING");
-    };
+      logMessage("📨 Sent: PING");
+    } else {
+      logMessage("⚠️ WebSocket not ready, skipping PING.");
+    }
+  }, 500); // 500ms delay to allow full connection setup
+};
+
 
     ws.current.onmessage = (event) => {
       logMessage(`📩 WebSocket Response: ${event.data}`);
