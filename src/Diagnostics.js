@@ -10,7 +10,7 @@ const STUN_SERVERS = [
 const WS_SERVER_BASE = "wss://sip123-1211.ringcentral.com:8083";
 
 const STUNWebSocketTest = () => {
-  const [logs, setLogs] = useState();
+  const [logs, setLogs] = useState(); // Initialize as an empty array
   const [externalIP, setExternalIP] = useState(null);
   const [externalPort, setExternalPort] = useState(null);
   const [stunSuccess, setStunSuccess] = useState(false);
@@ -19,12 +19,9 @@ const STUNWebSocketTest = () => {
   const ws = useRef(null);
 
   const logMessage = (message) => {
-  const timestamp = new Date().toISOString();
-  setLogs((prevLogs) => {
-    const currentLogs = prevLogs || [];  // Fixed line
-    return [...currentLogs, `[${timestamp}] ${message}`];
-  });
-};
+    const timestamp = new Date().toISOString();
+    setLogs((prevLogs) => [...prevLogs, `[${timestamp}] ${message}`]);
+  };
 
   useEffect(() => {
     const setupDTLS = async () => {
@@ -159,7 +156,7 @@ const STUNWebSocketTest = () => {
       <button onClick={sendTestUDPPackets} disabled={webSocketStatus !== "Connected"}>
         Send UDP Packets
       </button>
-      <pre>{logs && logs.join("\n")}</pre>
+      <pre>{logs.join("\n")}</pre>
     </div>
   );
 };
