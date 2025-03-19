@@ -112,6 +112,31 @@ const STUNWebSocketTest = () => {
     });
   };
 
+  const connectWebSocket = (ip, port) => {
+    logMessage(`Attempting WebSocket connection to ${WS_SERVER_BASE} from ${ip}:${port}...`);
+    const wsUrl = `${WS_SERVER_BASE}?ip=${ip}&port=${port}`;
+    ws.current = new WebSocket(wsUrl, "sip");
+
+    ws.current.onopen = () => {
+      setWebSocketStatus("Connected");
+      logMessage(`✅ WebSocket connection established.`);
+    };
+
+    ws.current.onmessage = (event) => {
+      logMessage(`📩 WebSocket Response: ${event.data}`);
+    };
+
+    ws.current.onerror = (error) => {
+      setWebSocketStatus("Error");
+      logMessage(`❌ WebSocket Error: ${error.message}`);
+    };
+
+    ws.current.onclose = (event) => {
+      setWebSocketStatus("Closed");
+      logMessage(`🔴 WebSocket closed. Code: ${event.code}, Reason: ${event.reason || "No reason provided"}`);
+    };
+  };
+
   return (
     <div style={{ padding: "20px", fontFamily: "Arial" }}>
       <h2>DTLS, STUN & WebSocket Connection Test</h2>
