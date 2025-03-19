@@ -10,7 +10,7 @@ const STUN_SERVERS = [
 const WS_SERVER_BASE = "wss://sip123-1211.ringcentral.com:8083";
 
 const STUNWebSocketTest = () => {
-  const [logs, setLogs] = useState(); // Initialize as an empty array
+  const [logs, setLogs] = useState();
   const [externalIP, setExternalIP] = useState(null);
   const [externalPort, setExternalPort] = useState(null);
   const [stunSuccess, setStunSuccess] = useState(false);
@@ -156,7 +156,7 @@ const STUNWebSocketTest = () => {
       <button onClick={sendTestUDPPackets} disabled={webSocketStatus !== "Connected"}>
         Send UDP Packets
       </button>
-      <pre>{logs.join("\n")}</pre>
+      <pre>{logs && logs.join("\n")}</pre>
     </div>
   );
 };
