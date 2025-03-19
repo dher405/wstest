@@ -102,20 +102,18 @@ const STUNWebSocketTest = () => {
   }, 500); // 500ms delay to allow full connection setup
 };
 
-
     ws.current.onmessage = (event) => {
-      logMessage(`📩 WebSocket Response: ${event.data}`);
-    };
+  logMessage(`📩 WebSocket Response: ${event.data}`);
+};
 
     ws.current.onerror = (error) => {
       setWebSocketStatus("Error");
       logMessage(`❌ WebSocket Error: ${error.message}`);
     };
-
     ws.current.onclose = (event) => {
-      setWebSocketStatus("Closed");
-      logMessage(`🔴 WebSocket closed. Code: ${event.code}, Reason: ${event.reason || "No reason provided"}`);
-    };
+  setWebSocketStatus("Closed");
+  logMessage(`🔴 WebSocket closed. Code: ${event.code}, Reason: ${event.reason || "No reason provided"}`);
+};
   };
 
   return (
