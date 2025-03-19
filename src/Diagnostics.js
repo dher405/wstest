@@ -18,6 +18,7 @@ const STUNWebSocketTest = () => {
   const [webSocketStatus, setWebSocketStatus] = useState("Not Connected");
   const [latency, setLatency] = useState(null);
   const [browserInfo, setBrowserInfo] = useState("");
+  const [cacheHealth, setCacheHealth] = useState("Checking...");
   const ws = useRef(null);
 
   const logMessage = (message) => {
@@ -31,6 +32,9 @@ const STUNWebSocketTest = () => {
     setBrowserInfo(userAgent);
     logMessage(`Browser Info: ${userAgent}`);
 
+    // Check browser cache health
+    checkCacheHealth();
+
     const setupDTLS = async () => {
       logMessage("Attempting DTLS handshake before STUN...");
       try {
@@ -43,8 +47,12 @@ const STUNWebSocketTest = () => {
         await pc.createOffer().then((offer) => pc.setLocalDescription(offer));
         setDtlsSuccess(true);
         const end = performance.now();
-        setLatency(end - start);
-        logMessage(`DTLS handshake successful. Latency: ${(end - start).toFixed(2)}ms`);
+        const dtlsLatency = end - start;
+        setLatency(dtlsLatency);
+        logMessage(`DTLS handshake successful. Latency: ${dtlsLatency.toFixed(2)}ms`);
+        if (dtlsLatency > 1000) {
+          logMessage("⚠️ Possible network delay detected during DTLS handshake.");
+        }
         setupSTUN(pc);
       } catch (error) {
         logMessage(`DTLS handshake failed: ${error.message}`);
@@ -92,39 +100,16 @@ const STUNWebSocketTest = () => {
     };
   }, []);
 
-  const connectWebSocket = (ip, port) => {
-    logMessage(`Attempting WebSocket connection to ${WS_SERVER_BASE} from ${ip}:${port}...`);
-    const wsUrl = `${WS_SERVER_BASE}?ip=${ip}&port=${port}`;
-    ws.current = new WebSocket(wsUrl, "sip");
-
-    ws.current.onopen = () => {
-      setWebSocketStatus("Connected");
-      logMessage(`✅ WebSocket connection established.`);
-      
-      setTimeout(() => {
-        if (ws.current.readyState === WebSocket.OPEN) {
-          const registerMessage = "REGISTER sip:server.com SIP/2.0\r\nVia: SIP/2.0/WSS client.invalid;branch=z9hG4bK776asdhds\r\nMax-Forwards: 70\r\nTo: <sip:server.com>\r\nFrom: <sip:user@server.com>;tag=49583\r\nCall-ID: 1234567890@client.invalid\r\nCSeq: 1 REGISTER\r\nContact: <sip:user@server.com>\r\nExpires: 600\r\nContent-Length: 0\r\n\r\n";
-          ws.current.send(registerMessage);
-          logMessage("📨 Sent: REGISTER request");
-        } else {
-          logMessage("⚠️ WebSocket not ready, skipping REGISTER request.");
-        }
-      }, 500);
-    };
-
-    ws.current.onmessage = (event) => {
-      logMessage(`📩 WebSocket Response: ${event.data}`);
-    };
-
-    ws.current.onerror = (error) => {
-      setWebSocketStatus("Error");
-      logMessage(`❌ WebSocket Error: ${error.message}`);
-    };
-
-    ws.current.onclose = (event) => {
-      setWebSocketStatus("Closed");
-      logMessage(`🔴 WebSocket closed. Code: ${event.code}, Reason: ${event.reason || "No reason provided"}`);
-    };
+  const checkCacheHealth = () => {
+    caches.keys().then((cacheNames) => {
+      if (cacheNames.length > 0) {
+        logMessage(`⚠️ Browser cache detected (${cacheNames.length} cache entries). This may contribute to delays.`);
+        setCacheHealth("Cache detected, may cause delays.");
+      } else {
+        logMessage("✅ No significant browser cache detected.");
+        setCacheHealth("Cache is clear, no detected issues.");
+      }
+    });
   };
 
   return (
@@ -137,10 +122,10 @@ const STUNWebSocketTest = () => {
       <p><strong>STUN Status:</strong> {stunSuccess ? "Success" : "Failed"}</p>
       <p><strong>WebSocket Status:</strong> {webSocketStatus}</p>
       <p><strong>Browser Info:</strong> {browserInfo}</p>
+      <p><strong>Cache Health:</strong> {cacheHealth}</p>
       <pre>{logs.length > 0 ? logs.join("\n") : "No logs yet..."}</pre>
     </div>
   );
 };
 
 export default STUNWebSocketTest;
-
