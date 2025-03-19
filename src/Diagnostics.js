@@ -39,6 +39,48 @@ const STUNWebSocketTest = () => {
     };
   }, []);
 
+  const setupDTLS = async () => {
+    logMessage("Attempting DTLS handshake before STUN...");
+    try {
+      const start = performance.now();
+      const pc = new RTCPeerConnection({
+        iceServers: STUN_SERVERS.map((url) => ({ urls: url })),
+        dtlsTransportPolicy: "require",
+      });
+      pc.createDataChannel("test");
+      await pc.createOffer().then((offer) => pc.setLocalDescription(offer));
+      setDtlsSuccess(true);
+      const end = performance.now();
+      setLatency(end - start);
+      logMessage(`DTLS handshake successful. Latency: ${(end - start).toFixed(2)}ms`);
+      setupSTUN(pc);
+    } catch (error) {
+      logMessage(`DTLS handshake failed: ${error.message}`);
+    }
+  };
+
+  const setupSTUN = async (pc) => {
+    logMessage("Attempting to set up STUN connection...");
+    pc.onicecandidate = (event) => {
+      if (event.candidate) {
+        const ipMatch = event.candidate.candidate.match(/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/);
+        const portMatch = event.candidate.candidate.match(/(\d+)$/);
+        if (ipMatch && portMatch) {
+          const ip = ipMatch[1];
+          const port = parseInt(portMatch[1]);
+          logMessage(`STUN Resolved External IP: ${ip}, Port: ${port}`);
+          setExternalIP(ip);
+          setExternalPort(port);
+          setStunSuccess(true);
+          setTimeout(() => {
+            connectWebSocket(ip, port);
+          }, 100);
+          pc.close();
+        }
+      }
+    };
+  };
+
   const checkCacheHealth = () => {
     caches.keys().then((cacheNames) => {
       if (cacheNames.length > 0) {
@@ -68,20 +110,6 @@ const STUNWebSocketTest = () => {
           logMessage("⚠️ WebSocket not ready, skipping REGISTER request.");
         }
       }, 500);
-    };
-
-    ws.current.onmessage = (event) => {
-      logMessage(`📩 WebSocket Response: ${event.data}`);
-    };
-
-    ws.current.onerror = (error) => {
-      setWebSocketStatus("Error");
-      logMessage(`❌ WebSocket Error: ${error.message}`);
-    };
-
-    ws.current.onclose = (event) => {
-      setWebSocketStatus("Closed");
-      logMessage(`🔴 WebSocket closed. Code: ${event.code}, Reason: ${event.reason || "No reason provided"}`);
     };
   };
 
