@@ -4,13 +4,13 @@ const STUN_SERVERS = [
   "stun:stun1.eo1.engage.ringcentral.com:19302",
   "stun:stun2.eo1.engage.ringcentral.com:19302",
   "stun:stun3.eo1.engage.ringcentral.com:19302",
-  "stun:stun.l.google.com:19302" // Fallback
+  "stun:stun.l.google.com:19302"
 ];
 
 const WS_SERVER_BASE = "wss://sip123-1211.ringcentral.com:8083";
 
 const STUNWebSocketTest = () => {
-  const [logs, setLogs] = useState();
+  const [logs, setLogs] = useState(); // Initialize as an empty array
   const [externalIP, setExternalIP] = useState(null);
   const [externalPort, setExternalPort] = useState(null);
   const [stunSuccess, setStunSuccess] = useState(false);
@@ -45,7 +45,6 @@ const STUNWebSocketTest = () => {
       logMessage("Attempting to set up STUN connection...");
       pc.onicecandidate = (event) => {
         if (event.candidate) {
-          // Corrected regex for IP address matching
           const ipMatch = event.candidate.candidate.match(
             /(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/
           );
