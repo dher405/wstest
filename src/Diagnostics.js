@@ -7,7 +7,7 @@ const STUN_SERVERS = [
   "stun:stun.l.google.com:19302" // Fallback
 ];
 
-const WS_SERVER_BASE = "wss://wcm-ev-p02-eo1.engage.ringcentral.com:8080";
+const WS_SERVER_BASE = "wss://sip123-1211.ringcentral.com:8083"; // Updated WebSocket URL
 
 const STUNWebSocketTest = () => {
   const [logs, setLogs] = useState([]);
@@ -69,37 +69,37 @@ const STUNWebSocketTest = () => {
   }, []);
 
   function connectWebSocket(ip, port) {
-  logMessage(`Attempting WebSocket connection to ${WS_SERVER_BASE} from ${ip}:${port}...`);
+    logMessage(`Attempting WebSocket connection to ${WS_SERVER_BASE} from ${ip}:${port}...`);
 
-    const WebSocket = require("ws");
+    const WebSocket = window.WebSocket; // Using browser's built-in WebSocket
 
     const accessToken = "eyJhbGciOiJSUzI1NiJ9.eyJhZ250IjpbMTUyOTg2XSwiYWdudC1hY2MiOnsiMTUyOTg2IjoiMjEyNzAwMDEifSwiZW1iZCI6ZmFsc2UsInJjYWMiOiIzNzQzOTUxMCIsImVzdSI6ZmFsc2UsImxhcHAiOiJTU08iLCJmbHIiOmZhbHNlLCJzc28iOnRydWUsInJjaWQiOjE5MTgwOTYwMDgsInBsYXQiOiJldi1wMDIiLCJhY2N0IjoiMjEyNzAwMDAiLCJleHAiOjE3NDIxODA5Nzl9.BCX5N73WAsmQZrHR4JyTWO-0g8wvujFy0haQZdXycoGjcfDL0OnFltvTNsewUhN3_camJv2zw1yNvCYB095GxocZNhFhRi5JFk-fQqsxVtctgqp1xeKM_OkQQb-3Fghblp2ss0KlrymzMyB7Yo3Io_rUAmlMwSzhoCKU1B2KffwWNnYGzRUfw79n_VIw_4tAub0nzbhYqumdUDz-9uGuk2Bb8F7rgw_vAkkYicoQncCI52pPQlV-dIktRcnQIVnnHsLigUvBmyAHKdVkjcapkSqTwNfdBLSenCxZ2i166j5-O63bIivjHSxjOVdH9fiCxgl3MDwai0Kmtilgv-KcwA";
     const agentId = "152986";
-  const clientRequestId = "EAG:08415eb6-311a-7639-ad11-d6f25746aa36";
-  const wsUrl = `${WS_SERVER_BASE}/?access_token=${encodeURIComponent(accessToken)}&agent_id=${agentId}&x-engage-client-request-id=${clientRequestId}`;
-// ✅ Use the built-in WebSocket API
-  ws = new WebSocket(wsUrl);
+    const clientRequestId = "EAG:08415eb6-311a-7639-ad11-d6f25746aa36";
+    const wsUrl = `${WS_SERVER_BASE}/?access_token=${encodeURIComponent(accessToken)}&agent_id=${agentId}&x-engage-client-request-id=${clientRequestId}`;
 
-  ws.onopen = () => {
-    setWebSocketStatus("Connected");
-    logMessage(`✅ WebSocket connection established to ${wsUrl} from ${ip}:${port}.`);
-    ws.send("PING");
-  };
+    ws = new WebSocket(wsUrl);
 
-  ws.onmessage = (event) => {
-    logMessage(`📩 WebSocket Response: ${event.data}`);
-  };
+    ws.onopen = () => {
+      setWebSocketStatus("Connected");
+      logMessage(`✅ WebSocket connection established to ${wsUrl} from ${ip}:${port}.`);
+      ws.send("PING");
+    };
 
-  ws.onerror = (error) => {
-    setWebSocketStatus("Error");
-    logMessage(`❌ WebSocket Error: ${error.message}`);
-  };
+    ws.onmessage = (event) => {
+      logMessage(`📩 WebSocket Response: ${event.data}`);
+    };
 
-  ws.onclose = () => {
-    setWebSocketStatus("Closed");
-    logMessage(`🔴 WebSocket connection to ${wsUrl} closed.`);
-  };
-}
+    ws.onerror = (error) => {
+      setWebSocketStatus("Error");
+      logMessage(`❌ WebSocket Error: ${error.message}`);
+    };
+
+    ws.onclose = () => {
+      setWebSocketStatus("Closed");
+      logMessage(`🔴 WebSocket connection to ${wsUrl} closed.`);
+    };
+  }
 
   function sendTestUDPPackets() {
     if (ws && ws.readyState === WebSocket.OPEN) {
@@ -122,6 +122,7 @@ const STUNWebSocketTest = () => {
       <p><strong>External Port:</strong> {externalPort || "Fetching..."}</p>
       <p><strong>STUN Status:</strong> {stunSuccess ? "Success" : "Failed"}</p>
       <p><strong>WebSocket Status:</strong> {webSocketStatus}</p>
+      <pre>{logs.join("\n")}</pre>
     </div>
   );
 };
