@@ -16,7 +16,7 @@ const STUNWebSocketTest = () => {
   const [stunSuccess, setStunSuccess] = useState(false);
   const [dtlsSuccess, setDtlsSuccess] = useState(false);
   const [webSocketStatus, setWebSocketStatus] = useState("Not Connected");
-  const ws = useRef(null); // Use useRef to hold the WebSocket instance
+  const ws = useRef(null);
 
   const logMessage = (message) => {
     const timestamp = new Date().toISOString();
@@ -45,10 +45,11 @@ const STUNWebSocketTest = () => {
       logMessage("Attempting to set up STUN connection...");
       pc.onicecandidate = (event) => {
         if (event.candidate) {
+          // Corrected regex for IP address matching
           const ipMatch = event.candidate.candidate.match(
-            /({1,3}\.{1,3}\.{1,3}\.{1,3})/
+            /(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/
           );
-          const portMatch = event.candidate.candidate.match(/(+)$/);
+          const portMatch = event.candidate.candidate.match(/(\d+)$/);
           if (ipMatch && portMatch) {
             const ip = ipMatch[1];
             const port = parseInt(portMatch[1]);
@@ -76,9 +77,7 @@ const STUNWebSocketTest = () => {
 
     setupDTLS();
 
-    // Cleanup DTLS - STUN (although the original code also closes pc)
     return () => {
-      //  Ensure pc is closed if it exists
       if (window.pc) {
         window.pc.close();
       }
@@ -101,7 +100,6 @@ const STUNWebSocketTest = () => {
       accessToken
     )}&agent_id=${agentId}&x-engage-client-request-id=${clientRequestId}`;
 
-    // Use useRef to persist the WebSocket instance
     ws.current = new WebSocket(wsUrl);
 
     ws.current.onopen = () => {
