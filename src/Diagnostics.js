@@ -7,10 +7,10 @@ const STUN_SERVERS = [
   "stun:stun.l.google.com:19302"
 ];
 
-const WS_SERVER_BASE = "wss://sip123-1211.ringcentral.com:8083";
+const WS_SERVER_BASE = "wss://sip123-1211.ringcentral.com:8083/";
 
 const STUNWebSocketTest = () => {
-  const [logs, setLogs] = useState([]); // Ensure logs is initialized as an array
+  const [logs, setLogs] = useState([]);
   const [externalIP, setExternalIP] = useState(null);
   const [externalPort, setExternalPort] = useState(null);
   const [stunSuccess, setStunSuccess] = useState(false);
@@ -84,8 +84,8 @@ const STUNWebSocketTest = () => {
 
   const connectWebSocket = (ip, port) => {
     logMessage(`Attempting WebSocket connection to ${WS_SERVER_BASE} from ${ip}:${port}...`);
-    const wsUrl = `${WS_SERVER_BASE}/?ip=${ip}&port=${port}`;
-    ws.current = new WebSocket(wsUrl);
+    const wsUrl = `${WS_SERVER_BASE}?ip=${ip}&port=${port}`;
+    ws.current = new WebSocket(wsUrl, "sip");
 
     ws.current.onopen = () => {
       setWebSocketStatus("Connected");
@@ -104,17 +104,8 @@ const STUNWebSocketTest = () => {
 
     ws.current.onclose = (event) => {
       setWebSocketStatus("Closed");
-      logMessage(`🔴 WebSocket closed. Code: ${event.code}, Reason: ${event.reason}`);
+      logMessage(`🔴 WebSocket closed. Code: ${event.code}, Reason: ${event.reason || "No reason provided"}`);
     };
-  };
-
-  const sendTestUDPPackets = () => {
-    if (ws.current && ws.current.readyState === WebSocket.OPEN) {
-      logMessage("Sending test UDP packets over WebSocket...");
-      ws.current.send(JSON.stringify({ type: "test", message: "Hello from UDP over WebSocket!" }));
-    } else {
-      logMessage("WebSocket is not open. Cannot send UDP packets.");
-    }
   };
 
   return (
@@ -125,7 +116,6 @@ const STUNWebSocketTest = () => {
       <p><strong>External Port:</strong> {externalPort || "Fetching..."}</p>
       <p><strong>STUN Status:</strong> {stunSuccess ? "Success" : "Failed"}</p>
       <p><strong>WebSocket Status:</strong> {webSocketStatus}</p>
-      <button onClick={sendTestUDPPackets} disabled={webSocketStatus !== "Connected"}>Send UDP Packets</button>
       <pre>{logs.length > 0 ? logs.join("\n") : "No logs yet..."}</pre>
     </div>
   );
