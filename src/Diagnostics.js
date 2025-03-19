@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 
 const STUN_SERVERS = [
   "stun:stun1.eo1.engage.ringcentral.com:19302",
@@ -7,24 +7,29 @@ const STUN_SERVERS = [
   "stun:stun.l.google.com:19302" // Fallback
 ];
 
-const WS_SERVER_BASE = "wss://sip123-1211.ringcentral.com:8083"; // Updated WebSocket URL
+const WS_SERVER_BASE = "wss://sip123-1211.ringcentral.com:8083";
 
 const STUNWebSocketTest = () => {
-  const [logs, setLogs] = useState([]);
+  const [logs, setLogs] = useState();
   const [externalIP, setExternalIP] = useState(null);
   const [externalPort, setExternalPort] = useState(null);
   const [stunSuccess, setStunSuccess] = useState(false);
   const [dtlsSuccess, setDtlsSuccess] = useState(false);
   const [webSocketStatus, setWebSocketStatus] = useState("Not Connected");
-  let ws;
+  const ws = useRef(null); // Use useRef to hold the WebSocket instance
+
+  const logMessage = (message) => {
+    const timestamp = new Date().toISOString();
+    setLogs((prevLogs) => [...prevLogs, `[${timestamp}] ${message}`]);
+  };
 
   useEffect(() => {
-    async function setupDTLS() {
+    const setupDTLS = async () => {
       logMessage("Attempting DTLS handshake before STUN...");
       try {
         const pc = new RTCPeerConnection({
-          iceServers: STUN_SERVERS.map(url => ({ urls: url })),
-          dtlsTransportPolicy: "require"
+          iceServers: STUN_SERVERS.map((url) => ({ urls: url })),
+          dtlsTransportPolicy: "require",
         });
         pc.createDataChannel("test");
         await pc.createOffer().then((offer) => pc.setLocalDescription(offer));
@@ -34,21 +39,25 @@ const STUNWebSocketTest = () => {
       } catch (error) {
         logMessage(`DTLS handshake failed: ${error.message}`);
       }
-    }
+    };
 
-    async function setupSTUN(pc) {
-      logMessage("Attempting to set up STUN connection with WebSocket server...");
+    const setupSTUN = async (pc) => {
+      logMessage("Attempting to set up STUN connection...");
       pc.onicecandidate = (event) => {
         if (event.candidate) {
-          const ipMatch = event.candidate.candidate.match(/([0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3})/);
-          const portMatch = event.candidate.candidate.match(/([0-9]+)$/);
+          const ipMatch = event.candidate.candidate.match(
+            /({1,3}\.{1,3}\.{1,3}\.{1,3})/
+          );
+          const portMatch = event.candidate.candidate.match(/(+)$/);
           if (ipMatch && portMatch) {
-            logMessage(`STUN Resolved External IP: ${ipMatch[1]}, Port: ${portMatch[1]}`);
-            setExternalIP(ipMatch[1]);
-            setExternalPort(parseInt(portMatch[1]));
+            const ip = ipMatch[1];
+            const port = parseInt(portMatch[1]);
+            logMessage(`STUN Resolved External IP: ${ip}, Port: ${port}`);
+            setExternalIP(ip);
+            setExternalPort(port);
             setStunSuccess(true);
             setTimeout(() => {
-              connectWebSocket(ipMatch[1], parseInt(portMatch[1]));
+              connectWebSocket(ip, port);
             }, 100);
             pc.close();
             return;
@@ -63,69 +72,96 @@ const STUNWebSocketTest = () => {
           pc.close();
         }
       };
-    }
-
-    setupDTLS();
-  }, []);
-
-  function connectWebSocket(ip, port) {
-    logMessage(`Attempting WebSocket connection to ${WS_SERVER_BASE} from ${ip}:${port}...`);
-
-    const WebSocket = window.WebSocket; // Using browser's built-in WebSocket
-
-    const accessToken = "eyJhbGciOiJSUzI1NiJ9.eyJhZ250IjpbMTUyOTg2XSwiYWdudC1hY2MiOnsiMTUyOTg2IjoiMjEyNzAwMDEifSwiZW1iZCI6ZmFsc2UsInJjYWMiOiIzNzQzOTUxMCIsImVzdSI6ZmFsc2UsImxhcHAiOiJTU08iLCJmbHIiOmZhbHNlLCJzc28iOnRydWUsInJjaWQiOjE5MTgwOTYwMDgsInBsYXQiOiJldi1wMDIiLCJhY2N0IjoiMjEyNzAwMDAiLCJleHAiOjE3NDIxODA5Nzl9.BCX5N73WAsmQZrHR4JyTWO-0g8wvujFy0haQZdXycoGjcfDL0OnFltvTNsewUhN3_camJv2zw1yNvCYB095GxocZNhFhRi5JFk-fQqsxVtctgqp1xeKM_OkQQb-3Fghblp2ss0KlrymzMyB7Yo3Io_rUAmlMwSzhoCKU1B2KffwWNnYGzRUfw79n_VIw_4tAub0nzbhYqumdUDz-9uGuk2Bb8F7rgw_vAkkYicoQncCI52pPQlV-dIktRcnQIVnnHsLigUvBmyAHKdVkjcapkSqTwNfdBLSenCxZ2i166j5-O63bIivjHSxjOVdH9fiCxgl3MDwai0Kmtilgv-KcwA";
-    const agentId = "152986";
-    const clientRequestId = "EAG:08415eb6-311a-7639-ad11-d6f25746aa36";
-    const wsUrl = `${WS_SERVER_BASE}/?access_token=${encodeURIComponent(accessToken)}&agent_id=${agentId}&x-engage-client-request-id=${clientRequestId}`;
-
-    ws = new WebSocket(wsUrl);
-
-    ws.onopen = () => {
-      setWebSocketStatus("Connected");
-      logMessage(`✅ WebSocket connection established to ${wsUrl} from ${ip}:${port}.`);
-      ws.send("PING");
     };
 
-    ws.onmessage = (event) => {
+    setupDTLS();
+
+    // Cleanup DTLS - STUN (although the original code also closes pc)
+    return () => {
+      //  Ensure pc is closed if it exists
+      if (window.pc) {
+        window.pc.close();
+      }
+      if (ws.current) {
+        ws.current.close();
+      }
+    };
+  },);
+
+  const connectWebSocket = (ip, port) => {
+    logMessage(
+      `Attempting WebSocket connection to ${WS_SERVER_BASE} from ${ip}:${port}...`
+    );
+
+    const accessToken =
+      "eyJhbGciOiJSUzI1NiJ9.eyJhZ250IjpbMTUyOTg2XSwiYWdudC1hY2MiOnsiMTUyOTg2IjoiMjEyNzAwMDEifSwiZW1iZCI6ZmFsc2UsInJjYWMiOiIzNzQzOTUxMCIsImVzdSI6ZmFsc2UsImxhcHAiOiJTU08iLCJmbHIiOmZhbHNlLCJzc28iOnRydWUsInJjaWQiOjE5MTgwOTYwMDgsInBsYXQiOiJldi1wMDIiLCJhY2N0IjoiMjEyNzAwMDAiLCJleHAiOjE3NDIxODA5Nzl9.BCX5N73WAsmQZrHR4JyTWO-0g8wvujFy0haQZdXycoGjcfDL0OnFltvTNsewUhN3_camJv2zw1yNvCYB095GxocZNhFhRi5JFk-fQqsxVtctgqp1xeKM_OkQQb-3Fghblp2ss0KlrymzMyB7Yo3Io_rUAmlMwSzhoCKU1B2KffwWNnYGzRUfw79n_VIw_4tAub0nzbhYqumdUDz-9uGuk2Bb8F7rgw_vAkkYicoQncCI52pPQlV-dIktRcnQIVnnHsLigUvBmyAHKdVkjcapkSqTwNfdBLSenCxZ2i166j5-O63bIivjHSxjOVdH9fiCxgl3MDwai0Kmtilgv-KcwA";
+    const agentId = "152986";
+    const clientRequestId = "EAG:08415eb6-311a-7639-ad11-d6f25746aa36";
+    const wsUrl = `${WS_SERVER_BASE}/?access_token=${encodeURIComponent(
+      accessToken
+    )}&agent_id=${agentId}&x-engage-client-request-id=${clientRequestId}`;
+
+    // Use useRef to persist the WebSocket instance
+    ws.current = new WebSocket(wsUrl);
+
+    ws.current.onopen = () => {
+      setWebSocketStatus("Connected");
+      logMessage(`✅ WebSocket connection established to ${wsUrl} from ${ip}:${port}.`);
+      ws.current.send("PING");
+    };
+
+    ws.current.onmessage = (event) => {
       logMessage(`📩 WebSocket Response: ${event.data}`);
     };
 
-    ws.onerror = (error) => {
+    ws.current.onerror = (error) => {
       setWebSocketStatus("Error");
       logMessage(`❌ WebSocket Error: ${error.message}`);
     };
 
-    ws.onclose = () => {
+    ws.current.onclose = (event) => {
       setWebSocketStatus("Closed");
-      logMessage(`🔴 WebSocket connection to ${wsUrl} closed.`);
+      logMessage(
+        `🔴 WebSocket connection to ${wsUrl} closed. Code: ${event.code}, Reason: ${event.reason}`
+      );
     };
-  }
+  };
 
-  function sendTestUDPPackets() {
-    if (ws && ws.readyState === WebSocket.OPEN) {
+  const sendTestUDPPackets = () => {
+    if (ws.current && ws.current.readyState === WebSocket.OPEN) {
       logMessage("Sending test UDP packets over WebSocket...");
-      ws.send(JSON.stringify({ type: "test", message: "Hello from UDP over WebSocket!" }));
+      ws.current.send(
+        JSON.stringify({ type: "test", message: "Hello from UDP over WebSocket!" })
+      );
     } else {
       logMessage("WebSocket is not open. Cannot send UDP packets.");
     }
-  }
-
-  function logMessage(message) {
-    setLogs(prevLogs => [...prevLogs, message]);
-  }
+  };
 
   return (
     <div style={{ padding: "20px", fontFamily: "Arial" }}>
       <h2>DTLS, STUN & WebSocket Connection Test</h2>
-      <p><strong>DTLS Status:</strong> {dtlsSuccess ? "Success" : "Failed"}</p>
-      <p><strong>External IP:</strong> {externalIP || "Fetching..."}</p>
-      <p><strong>External Port:</strong> {externalPort || "Fetching..."}</p>
-      <p><strong>STUN Status:</strong> {stunSuccess ? "Success" : "Failed"}</p>
-      <p><strong>WebSocket Status:</strong> {webSocketStatus}</p>
+      <p>
+        <strong>DTLS Status:</strong> {dtlsSuccess ? "Success" : "Failed"}
+      </p>
+      <p>
+        <strong>External IP:</strong> {externalIP || "Fetching..."}
+      </p>
+      <p>
+        <strong>External Port:</strong> {externalPort || "Fetching..."}
+      </p>
+      <p>
+        <strong>STUN Status:</strong> {stunSuccess ? "Success" : "Failed"}
+      </p>
+      <p>
+        <strong>WebSocket Status:</strong> {webSocketStatus}
+      </p>
+      <button onClick={sendTestUDPPackets} disabled={webSocketStatus !== "Connected"}>
+        Send UDP Packets
+      </button>
       <pre>{logs.join("\n")}</pre>
     </div>
   );
 };
 
 export default STUNWebSocketTest;
-
