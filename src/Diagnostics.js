@@ -20,7 +20,10 @@ const STUNWebSocketTest = () => {
 
   const logMessage = (message) => {
     const timestamp = new Date().toISOString();
-    setLogs((prevLogs) => [...prevLogs, `[${timestamp}] ${message}`]);
+    setLogs((prevLogs) => {
+      const currentLogs = prevLogs ||;
+      return [...currentLogs, `[${timestamp}] ${message}`];
+    });
   };
 
   useEffect(() => {
