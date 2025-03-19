@@ -19,12 +19,12 @@ const STUNWebSocketTest = () => {
   const ws = useRef(null);
 
   const logMessage = (message) => {
-    const timestamp = new Date().toISOString();
-    setLogs((prevLogs) => {
-      const currentLogs = prevLogs ||;
-      return [...currentLogs, `[${timestamp}] ${message}`];
-    });
-  };
+  const timestamp = new Date().toISOString();
+  setLogs((prevLogs) => {
+    const currentLogs = prevLogs || [];  // Fixed line
+    return [...currentLogs, `[${timestamp}] ${message}`];
+  });
+};
 
   useEffect(() => {
     const setupDTLS = async () => {
