@@ -7,7 +7,7 @@ const STUN_SERVERS = [
   "stun:stun.l.google.com:19302"
 ];
 
-const WS_SERVER_BASE = "wss://sip123-1211.ringcentral.com:8083/";
+const WS_SERVER_BASE = "wss://wcm-ev-p02-eo1.engage.ringcentral.com:8080/";
 
 const STUNWebSocketTest = () => {
   const [logs, setLogs] = useState([]);
@@ -106,7 +106,21 @@ const STUNWebSocketTest = () => {
       
       setTimeout(() => {
         if (ws.current.readyState === WebSocket.OPEN) {
-          const registerMessage = "REGISTER sip:server.com SIP/2.0\r\nVia: SIP/2.0/WSS client.invalid;branch=z9hG4bK776asdhds\r\nMax-Forwards: 70\r\nTo: <sip:server.com>\r\nFrom: <sip:user@server.com>;tag=49583\r\nCall-ID: 1234567890@client.invalid\r\nCSeq: 1 REGISTER\r\nContact: <sip:user@server.com>\r\nExpires: 600\r\nContent-Length: 0\r\n\r\n";
+          const registerMessage = "{
+  "@destination": "IQ",
+  "@type": "LOGIN-PHASE-1",
+  "@message_id": "d6109b8c-3b99-9ab4-80dc-6352e6a50855",
+  "response_to": "",
+  "reconnect": {
+    "#text": ""
+  },
+  "agent_id": {
+    "#text": "152986"
+  },
+  "access_token": {
+    "#text": "eyJhbGciOiJSUzI1NiJ9.eyJhZ250IjpbMTUyOTg2XSwiYWdudC1hY2MiOnsiMTUyOTg2IjoiMjEyNzAwMDEifSwiZW1iZCI6ZmFsc2UsInJjYWMiOiIzNzQzOTUxMCIsImVzdSI6ZmFsc2UsImxhcHAiOiJTU08iLCJmbHIiOmZhbHNlLCJzc28iOnRydWUsInJjaWQiOjE5MTgwOTYwMDgsInBsYXQiOiJldi1wMDIiLCJhY2N0IjoiMjEyNzAwMDAiLCJleHAiOjE3NDI0ODY0MTh9.mmxWbUm2kczSW2AM8fs9KNfZJj_YTnRgV6jibwMNoMd179fuaetsGq5EQBPFQ3pkgl0i1RxjMaitiPrErGo9hgje-0_bYVd8N7UMOAG0kLO4twjCZXlfRCGAHKbwMxuumJf-7mK_fllD26xKoDDiAVg0H-wnDr_I4N_bnYs_ikcoW1JbMkgA6cDzxxPjIL48JpXgTdGID9Bry7_kXDi2Tvqmnl9CTw62-KYDYk7dRz2Z2VkzDEU0TjbIUmyz-BEEkILO3q1OvW4Myu9WHFrbwAGUZlpMQOs6GXSyuInoKgomKaY-A2o40XRXgG1I0QnCM-wVKL0SMxNHsVs3bcGg9w"
+  }
+}";
           registerTimestamp.current = performance.now();
           ws.current.send(registerMessage);
           logMessage("📨 Sent: REGISTER request");
