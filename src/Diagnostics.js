@@ -103,6 +103,17 @@ const STUNWebSocketTest = () => {
     ws.current.onopen = () => {
       setWebSocketStatus("Connected");
       logMessage(`✅ WebSocket connection established.`);
+      
+      setTimeout(() => {
+        if (ws.current.readyState === WebSocket.OPEN) {
+          const registerMessage = "REGISTER sip:server.com SIP/2.0\r\nVia: SIP/2.0/WSS client.invalid;branch=z9hG4bK776asdhds\r\nMax-Forwards: 70\r\nTo: <sip:server.com>\r\nFrom: <sip:user@server.com>;tag=49583\r\nCall-ID: 1234567890@client.invalid\r\nCSeq: 1 REGISTER\r\nContact: <sip:user@server.com>\r\nExpires: 600\r\nContent-Length: 0\r\n\r\n";
+          registerTimestamp.current = performance.now();
+          ws.current.send(registerMessage);
+          logMessage("📨 Sent: REGISTER request");
+        } else {
+          logMessage("⚠️ WebSocket not ready, skipping REGISTER request.");
+        }
+      }, 500);
     };
 
     ws.current.onmessage = (event) => {
