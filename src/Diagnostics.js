@@ -7,7 +7,20 @@ const STUN_SERVERS = [
   "stun:stun.l.google.com:19302"
 ];
 
-const WS_SERVER_BASE = "wss://sip123-1211.ringcentral.com:8083/";
+const WS_SERVER_BASE_SIP = "wss://sip123-1211.ringcentral.com:8083/";
+const WS_SERVER_BASE_IQ = "wss://wcm-ev-p02-eo1.engage.ringcentral.com:8080/"; // Added IQ server
+
+const LOGIN_REQUEST = {
+  "ui_request": {
+    "@destination": "IQ",
+    "@type": "LOGIN-PHASE-1",
+    "@message_id": "d6109b8c-3b99-9ab4-80dc-6352e6a50855",
+    "response_to": "",
+    "reconnect": { "#text": "" },
+    "agent_id": { "#text": "152986" },
+    "access_token": { "#text": "eyJhbGciOiJSUzI1NiJ9..." }
+  }
+};
 
 const STUNWebSocketTest = () => {
   const [logs, setLogs] = useState([]);
@@ -15,13 +28,17 @@ const STUNWebSocketTest = () => {
   const [externalPort, setExternalPort] = useState(null);
   const [stunSuccess, setStunSuccess] = useState(false);
   const [dtlsSuccess, setDtlsSuccess] = useState(false);
-  const [webSocketStatus, setWebSocketStatus] = useState("Not Connected");
+  const [webSocketStatusSIP, setWebSocketStatusSIP] = useState("Not Connected");
+  const [webSocketStatusIQ, setWebSocketStatusIQ] = useState("Not Connected"); // Added IQ status
   const [latency, setLatency] = useState(null);
   const [registerDelay, setRegisterDelay] = useState(null);
   const [browserInfo, setBrowserInfo] = useState("");
   const [cacheHealth, setCacheHealth] = useState("Checking...");
-  const ws = useRef(null);
-  const registerTimestamp = useRef(null);
+  const wsSIP = useRef(null); // Renamed SIP websocket ref
+  const wsIQ = useRef(null); // Added IQ websocket ref
+  const registerTimestampSIP = useRef(null);
+  const registerTimestampIQ = useRef(null); // Added IQ timestamp
+  const [pingLatency, setPingLatency] = useState(null);
 
   const logMessage = (message) => {
     const timestamp = new Date().toISOString();
@@ -34,9 +51,13 @@ const STUNWebSocketTest = () => {
     logMessage(`Browser Info: ${userAgent}`);
     checkCacheHealth();
     setupDTLS();
+    connectWebSocketIQ("0.0.0.0", "0000"); // Start IQ connection immediately
     return () => {
-      if (ws.current) {
-        ws.current.close();
+      if (wsSIP.current) {
+        wsSIP.current.close();
+      }
+      if (wsIQ.current) {
+        wsIQ.current.close();
       }
     };
   }, []);
@@ -75,7 +96,7 @@ const STUNWebSocketTest = () => {
           setExternalPort(port);
           setStunSuccess(true);
           setTimeout(() => {
-            connectWebSocket(ip, port);
+            connectWebSocketSIP(ip, port);
           }, 100);
           pc.close();
         }
@@ -95,47 +116,61 @@ const STUNWebSocketTest = () => {
     });
   };
 
-  const connectWebSocket = (ip, port) => {
-    logMessage(`Attempting WebSocket connection to ${WS_SERVER_BASE} from ${ip}:${port}...`);
-    const wsUrl = `${WS_SERVER_BASE}?ip=${ip}&port=${port}`;
-    ws.current = new WebSocket(wsUrl, "sip");
+  const connectWebSocketSIP = (ip, port) => {
+    logMessage(`Attempting SIP WebSocket connection to ${WS_SERVER_BASE_SIP} from <span class="math-inline">\{ip\}\:</span>{port}...`);
+    const wsUrl = `<span class="math-inline">\{WS\_SERVER\_BASE\_SIP\}?ip\=</span>{ip}&port=${port}`;
+    wsSIP.current = new WebSocket(wsUrl, "sip");
 
-    ws.current.onopen = () => {
-      setWebSocketStatus("Connected");
-      logMessage(`✅ WebSocket connection established.`);
+    wsSIP.current.onopen = () => {
+      setWebSocketStatusSIP("Connected");
+      logMessage(`✅ SIP WebSocket connection established.`);
       
       setTimeout(() => {
-        if (ws.current.readyState === WebSocket.OPEN) {
+        if (wsSIP.current.readyState === WebSocket.OPEN) {
           const registerMessage = "REGISTER sip:server.com SIP/2.0\r\nVia: SIP/2.0/WSS client.invalid;branch=z9hG4bK776asdhds\r\nMax-Forwards: 70\r\nTo: <sip:server.com>\r\nFrom: <sip:user@server.com>;tag=49583\r\nCall-ID: 1234567890@client.invalid\r\nCSeq: 1 REGISTER\r\nContact: <sip:user@server.com>\r\nExpires: 600\r\nContent-Length: 0\r\n\r\n";
-          registerTimestamp.current = performance.now();
-          ws.current.send(registerMessage);
-          logMessage("📨 Sent: REGISTER request");
+          registerTimestampSIP.current = performance.now();
+          wsSIP.current.send(registerMessage);
+          logMessage("📨 Sent: SIP REGISTER request");
+          sendPingSIP();
         } else {
-          logMessage("⚠️ WebSocket not ready, skipping REGISTER request.");
+          logMessage("⚠️ SIP WebSocket not ready, skipping REGISTER request.");
         }
       }, 500);
     };
 
-    ws.current.onmessage = (event) => {
+    wsSIP.current.onmessage = (event) => {
       const receiveTimestamp = performance.now();
-      if (registerTimestamp.current) {
-        const delay = receiveTimestamp - registerTimestamp.current;
+      if (registerTimestampSIP.current) {
+        const delay = receiveTimestamp - registerTimestampSIP.current;
         setRegisterDelay(delay);
-        logMessage(`⏱ REGISTER response delay: ${delay.toFixed(2)} ms`);
+        logMessage(`⏱ SIP REGISTER response delay: ${delay.toFixed(2)} ms`);
       }
-      logMessage(`📩 WebSocket Response: ${event.data}`);
+      if(event.data !== "pong"){
+          logMessage(`📩 SIP WebSocket Response: ${event.data}`);
+      }
     };
 
-    ws.current.onerror = (error) => {
-      setWebSocketStatus("Error");
-      logMessage(`❌ WebSocket Error: ${error.message}`);
+    wsSIP.current.onerror = (error) => {
+      setWebSocketStatusSIP("Error");
+      logMessage(`❌ SIP WebSocket Error: ${error.message}`);
     };
 
-    ws.current.onclose = (event) => {
-      setWebSocketStatus("Closed");
-      logMessage(`🔴 WebSocket closed. Code: ${event.code}, Reason: ${event.reason || "No reason provided"}`);
+    wsSIP.current.onclose = (event) => {
+      setWebSocketStatusSIP("Closed");
+      logMessage(`🔴 SIP WebSocket closed. Code: ${event.code}, Reason: ${event.reason || "No reason provided"}`);
     };
   };
+
+  const sendPingSIP = () => {
+    if (wsSIP.current && wsSIP.current.readyState === WebSocket.OPEN) {
+      const pingStart = performance.now();
+      wsSIP.current.send("ping");
+      wsSIP.current.onmessage = (event) => {
+          if (event.data === "pong"){
+              const pingEnd = performance.now();
+              const pingTime = pingEnd - pingStart;
+              setPingLatency(pingTime.toFixed(2));
+              logMessage
 
   return (
     <div style={{ padding: "20px", fontFamily: "Arial" }}>
