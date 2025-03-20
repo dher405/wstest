@@ -8,7 +8,7 @@ const STUN_SERVERS = [
 ];
 
 const WS_SERVER_BASE_SIP = "wss://sip123-1211.ringcentral.com:8083/";
-const WS_SERVER_BASE_IQ = "wss://wcm-ev-p02-eo1.engage.ringcentral.com:8080/"; // Added IQ server
+const WS_SERVER_BASE_IQ = "wss://wcm-ev-p02-eo1.engage.ringcentral.com:8080/";
 
 const LOGIN_REQUEST = {
   "ui_request": {
@@ -29,15 +29,15 @@ const STUNWebSocketTest = () => {
   const [stunSuccess, setStunSuccess] = useState(false);
   const [dtlsSuccess, setDtlsSuccess] = useState(false);
   const [webSocketStatusSIP, setWebSocketStatusSIP] = useState("Not Connected");
-  const [webSocketStatusIQ, setWebSocketStatusIQ] = useState("Not Connected"); // Added IQ status
+  const [webSocketStatusIQ, setWebSocketStatusIQ] = useState("Not Connected");
   const [latency, setLatency] = useState(null);
   const [registerDelay, setRegisterDelay] = useState(null);
   const [browserInfo, setBrowserInfo] = useState("");
   const [cacheHealth, setCacheHealth] = useState("Checking...");
-  const wsSIP = useRef(null); // Renamed SIP websocket ref
-  const wsIQ = useRef(null); // Added IQ websocket ref
+  const wsSIP = useRef(null);
+  const wsIQ = useRef(null);
   const registerTimestampSIP = useRef(null);
-  const registerTimestampIQ = useRef(null); // Added IQ timestamp
+  const registerTimestampIQ = useRef(null);
   const [pingLatency, setPingLatency] = useState(null);
 
   const logMessage = (message) => {
@@ -51,7 +51,7 @@ const STUNWebSocketTest = () => {
     logMessage(`Browser Info: ${userAgent}`);
     checkCacheHealth();
     setupDTLS();
-    connectWebSocketIQ("0.0.0.0", "0000"); // Start IQ connection immediately
+    connectWebSocketIQ("0.0.0.0", "0000");
     return () => {
       if (wsSIP.current) {
         wsSIP.current.close();
@@ -117,7 +117,7 @@ const STUNWebSocketTest = () => {
   };
 
   const connectWebSocketSIP = (ip, port) => {
-    logMessage(`Attempting SIP WebSocket connection to ${WS_SERVER_BASE_SIP} from <span class="math-inline">\{ip\}\:</span>{port}...`);
+    logMessage(`Attempting SIP WebSocket connection to <span class="math-inline">\{WS\_SERVER\_BASE\_SIP\}?ip\=</span>{ip}&port=${port}...`);
     const wsUrl = `<span class="math-inline">\{WS\_SERVER\_BASE\_SIP\}?ip\=</span>{ip}&port=${port}`;
     wsSIP.current = new WebSocket(wsUrl, "sip");
 
@@ -162,15 +162,29 @@ const STUNWebSocketTest = () => {
   };
 
   const sendPingSIP = () => {
-    if (wsSIP.current && wsSIP.current.readyState === WebSocket.OPEN) {
-      const pingStart = performance.now();
-      wsSIP.current.send("ping");
-      wsSIP.current.onmessage = (event) => {
-          if (event.data === "pong"){
-              const pingEnd = performance.now();
-              const pingTime = pingEnd - pingStart;
-              setPingLatency(pingTime.toFixed(2));
-              logMessage
+  if (wsSIP.current && wsSIP.current.readyState === WebSocket.OPEN) {
+    const pingStart = performance.now();
+    wsSIP.current.send("ping");
+    wsSIP.current.onmessage = (event) => {
+      if (event.data === "pong") {
+        const pingEnd = performance.now();
+        const pingTime = pingEnd - pingStart;
+        setPingLatency(pingTime.toFixed(2));
+        logMessage(`⏱ SIP Ping latency: ${pingTime.toFixed(2)} ms`);
+        setTimeout(sendPingSIP, 2000); // Send ping every 2 seconds
+      } else {
+        // Handle other messages if needed
+        const receiveTimestamp = performance.now();
+        if (registerTimestampSIP.current) {
+            const delay = receiveTimestamp - registerTimestampSIP.current;
+            setRegisterDelay(delay);
+            logMessage(`⏱ SIP REGISTER response delay: ${delay.toFixed(2)} ms`);
+        }
+        logMessage(`📩 SIP WebSocket Response: ${event.data}`);
+      }
+    };
+  }
+};
 
   return (
     <div style={{ padding: "20px", fontFamily: "Arial" }}>
