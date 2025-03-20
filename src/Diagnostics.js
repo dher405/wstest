@@ -162,29 +162,69 @@ const STUNWebSocketTest = () => {
   };
 
   const sendPingSIP = () => {
-  if (wsSIP.current && wsSIP.current.readyState === WebSocket.OPEN) {
-    const pingStart = performance.now();
-    wsSIP.current.send("ping");
-    wsSIP.current.onmessage = (event) => {
-      if (event.data === "pong") {
-        const pingEnd = performance.now();
-        const pingTime = pingEnd - pingStart;
-        setPingLatency(pingTime.toFixed(2));
-        logMessage(`⏱ SIP Ping latency: ${pingTime.toFixed(2)} ms`);
-        setTimeout(sendPingSIP, 2000); // Send ping every 2 seconds
-      } else {
-        // Handle other messages if needed
-        const receiveTimestamp = performance.now();
-        if (registerTimestampSIP.current) {
+    if (wsSIP.current && wsSIP.current.readyState === WebSocket.OPEN) {
+      const pingStart = performance.now();
+      wsSIP.current.send("ping");
+      wsSIP.current.onmessage = (event) => {
+        if (event.data === "pong") {
+          const pingEnd = performance.now();
+          const pingTime = pingEnd - pingStart;
+          setPingLatency(pingTime.toFixed(2));
+          logMessage(`⏱ SIP Ping latency: ${pingTime.toFixed(2)} ms`);
+          setTimeout(sendPingSIP,2000);
+        } else {
+          const receiveTimestamp = performance.now();
+          if (registerTimestampSIP.current) {
             const delay = receiveTimestamp - registerTimestampSIP.current;
             setRegisterDelay(delay);
             logMessage(`⏱ SIP REGISTER response delay: ${delay.toFixed(2)} ms`);
+          }
+          logMessage(`📩 SIP WebSocket Response: ${event.data}`);
         }
-        logMessage(`📩 SIP WebSocket Response: ${event.data}`);
-      }
+      };
+    }
+  };
+
+  const connectWebSocketIQ = (ip, port) => {
+    logMessage(`Attempting IQ WebSocket connection to ${WS_SERVER_BASE_IQ}...`);
+    wsIQ.current = new WebSocket(WS_SERVER_BASE_IQ);
+
+    wsIQ.current.onopen = () => {
+      setWebSocketStatusIQ("Connected");
+      logMessage(`✅ IQ WebSocket connection established.`);
+      sendLoginRequest();
     };
-  }
-};
+
+    wsIQ.current.onmessage = (event) => {
+      const receiveTimestamp = performance.now();
+      if (registerTimestampIQ.current) {
+        const delay = receiveTimestamp - registerTimestampIQ.current;
+        logMessage(`⏱ IQ LOGIN response delay: ${delay.toFixed(2)} ms`);
+      }
+      logMessage(`📩 IQ WebSocket Response: ${event.data}`);
+    };
+
+    wsIQ.current.onerror = (error) => {
+      setWebSocketStatusIQ("Error");
+      logMessage(`❌ IQ WebSocket Error: ${error.message}`);
+    };
+
+    wsIQ.current.onclose = (event) => {
+      setWebSocketStatusIQ("Closed");
+      logMessage(`🔴 IQ WebSocket closed. Code: ${event.code}, Reason: ${event.reason || "No reason provided"}`);
+    };
+  };
+
+  const sendLoginRequest = () => {
+    if (wsIQ.current && wsIQ.current.readyState === WebSocket.OPEN) {
+      const loginMessage = JSON.stringify(LOGIN_REQUEST);
+      registerTimestampIQ.current = performance.now();
+      wsIQ.current.send(loginMessage);
+      logMessage("📨 Sent: IQ LOGIN-PHASE-1 request");
+    } else {
+      logMessage("⚠️ IQ WebSocket not ready, skipping LOGIN request.");
+    }
+  };
 
   return (
     <div style={{ padding: "20px", fontFamily: "Arial" }}>
@@ -194,7 +234,8 @@ const STUNWebSocketTest = () => {
       <p><strong>External IP:</strong> {externalIP || "Fetching..."}</p>
       <p><strong>External Port:</strong> {externalPort || "Fetching..."}</p>
       <p><strong>STUN Status:</strong> {stunSuccess ? "Success" : "Failed"}</p>
-      <p><strong>WebSocket Status:</strong> {webSocketStatus}</p>
+      <p><strong>SIP WebSocket Status:</strong> {webSocketStatusSIP}</p>
+      <p><strong>IQ WebSocket Status:</strong> {webSocketStatusIQ}</p>
       <p><strong>REGISTER Response Delay:</strong> {registerDelay ? `${registerDelay.toFixed(2)} ms` : "Waiting..."}</p>
       <p><strong>Browser Info:</strong> {browserInfo}</p>
       <p><strong>Cache Health:</strong> {cacheHealth}</p>
