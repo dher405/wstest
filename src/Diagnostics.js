@@ -103,17 +103,6 @@ const STUNWebSocketTest = () => {
     ws.current.onopen = () => {
       setWebSocketStatus("Connected");
       logMessage(`✅ WebSocket connection established.`);
-      
-      setTimeout(() => {
-        if (ws.current.readyState === WebSocket.OPEN) {
-          const registerMessage = "REGISTER sip:server.com SIP/2.0\r\nVia: SIP/2.0/WSS client.invalid;branch=z9hG4bK776asdhds\r\nMax-Forwards: 70\r\nTo: <sip:server.com>\r\nFrom: <sip:user@server.com>;tag=49583\r\nCall-ID: 1234567890@client.invalid\r\nCSeq: 1 REGISTER\r\nContact: <sip:user@server.com>\r\nExpires: 600\r\nContent-Length: 0\r\n\r\n";
-          registerTimestamp.current = performance.now();
-          ws.current.send(registerMessage);
-          logMessage("📨 Sent: REGISTER request");
-        } else {
-          logMessage("⚠️ WebSocket not ready, skipping REGISTER request.");
-        }
-      }, 500);
     };
 
     ws.current.onmessage = (event) => {
@@ -140,11 +129,18 @@ const STUNWebSocketTest = () => {
   return (
     <div style={{ padding: "20px", fontFamily: "Arial" }}>
       <h2>DTLS, STUN & WebSocket Connection Test</h2>
+      <p><strong>DTLS Status:</strong> {dtlsSuccess ? "Success" : "Failed"}</p>
+      <p><strong>Latency:</strong> {latency ? `${latency.toFixed(2)} ms` : "Measuring..."}</p>
+      <p><strong>External IP:</strong> {externalIP || "Fetching..."}</p>
+      <p><strong>External Port:</strong> {externalPort || "Fetching..."}</p>
+      <p><strong>STUN Status:</strong> {stunSuccess ? "Success" : "Failed"}</p>
+      <p><strong>WebSocket Status:</strong> {webSocketStatus}</p>
       <p><strong>REGISTER Response Delay:</strong> {registerDelay ? `${registerDelay.toFixed(2)} ms` : "Waiting..."}</p>
+      <p><strong>Browser Info:</strong> {browserInfo}</p>
+      <p><strong>Cache Health:</strong> {cacheHealth}</p>
       <pre>{logs.length > 0 ? logs.join("\n") : "No logs yet..."}</pre>
     </div>
   );
 };
 
 export default STUNWebSocketTest;
-
