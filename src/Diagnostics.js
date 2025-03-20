@@ -17,9 +17,11 @@ const STUNWebSocketTest = () => {
   const [dtlsSuccess, setDtlsSuccess] = useState(false);
   const [webSocketStatus, setWebSocketStatus] = useState("Not Connected");
   const [latency, setLatency] = useState(null);
+  const [registerDelay, setRegisterDelay] = useState(null);
   const [browserInfo, setBrowserInfo] = useState("");
   const [cacheHealth, setCacheHealth] = useState("Checking...");
   const ws = useRef(null);
+  const registerTimestamp = useRef(null);
 
   const logMessage = (message) => {
     const timestamp = new Date().toISOString();
@@ -105,6 +107,7 @@ const STUNWebSocketTest = () => {
       setTimeout(() => {
         if (ws.current.readyState === WebSocket.OPEN) {
           const registerMessage = "REGISTER sip:server.com SIP/2.0\r\nVia: SIP/2.0/WSS client.invalid;branch=z9hG4bK776asdhds\r\nMax-Forwards: 70\r\nTo: <sip:server.com>\r\nFrom: <sip:user@server.com>;tag=49583\r\nCall-ID: 1234567890@client.invalid\r\nCSeq: 1 REGISTER\r\nContact: <sip:user@server.com>\r\nExpires: 600\r\nContent-Length: 0\r\n\r\n";
+          registerTimestamp.current = performance.now();
           ws.current.send(registerMessage);
           logMessage("📨 Sent: REGISTER request");
         } else {
@@ -114,6 +117,12 @@ const STUNWebSocketTest = () => {
     };
 
     ws.current.onmessage = (event) => {
+      const receiveTimestamp = performance.now();
+      if (registerTimestamp.current) {
+        const delay = receiveTimestamp - registerTimestamp.current;
+        setRegisterDelay(delay);
+        logMessage(`⏱ REGISTER response delay: ${delay.toFixed(2)} ms`);
+      }
       logMessage(`📩 WebSocket Response: ${event.data}`);
     };
 
@@ -131,17 +140,11 @@ const STUNWebSocketTest = () => {
   return (
     <div style={{ padding: "20px", fontFamily: "Arial" }}>
       <h2>DTLS, STUN & WebSocket Connection Test</h2>
-      <p><strong>DTLS Status:</strong> {dtlsSuccess ? "Success" : "Failed"}</p>
-      <p><strong>Latency:</strong> {latency ? `${latency.toFixed(2)} ms` : "Measuring..."}</p>
-      <p><strong>External IP:</strong> {externalIP || "Fetching..."}</p>
-      <p><strong>External Port:</strong> {externalPort || "Fetching..."}</p>
-      <p><strong>STUN Status:</strong> {stunSuccess ? "Success" : "Failed"}</p>
-      <p><strong>WebSocket Status:</strong> {webSocketStatus}</p>
-      <p><strong>Browser Info:</strong> {browserInfo}</p>
-      <p><strong>Cache Health:</strong> {cacheHealth}</p>
+      <p><strong>REGISTER Response Delay:</strong> {registerDelay ? `${registerDelay.toFixed(2)} ms` : "Waiting..."}</p>
       <pre>{logs.length > 0 ? logs.join("\n") : "No logs yet..."}</pre>
     </div>
   );
 };
 
 export default STUNWebSocketTest;
+
