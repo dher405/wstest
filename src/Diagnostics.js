@@ -216,6 +216,7 @@ const STUNWebSocketTest = () => {
     wsIQ.current.onopen = () => {
       setWebSocketStatusIQ("Connected");
       logMessage("✅ IQ WebSocket connection established.");
+      logMessage("Attempting to send Login Request");
       sendLoginRequest();
 
       setTimeout(() => {
