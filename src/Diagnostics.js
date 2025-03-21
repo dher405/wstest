@@ -210,44 +210,49 @@ const STUNWebSocketTest = () => {
 
   logMessage(`Attempting IQ WebSocket connection to ${wsUrl}...`);
 
-  wsIQ.current = new WebSocket(wsUrl);
+  try {
+    wsIQ.current = new WebSocket(wsUrl);
 
-  wsIQ.current.onopen = () => {
-    setWebSocketStatusIQ("Connected");
-    logMessage("✅ IQ WebSocket connection established.");
-    sendLoginRequest();
+    wsIQ.current.onopen = () => {
+      setWebSocketStatusIQ("Connected");
+      logMessage("✅ IQ WebSocket connection established.");
+      sendLoginRequest();
 
-    setTimeout(() => {
-      if (wsIQ.current) {
-        wsIQ.current.close();
-        setWebSocketStatusIQ("Closed (after 5s)");
-        logMessage("🔴 IQ WebSocket closed after 5 seconds.");
+      setTimeout(() => {
+        if (wsIQ.current) {
+          wsIQ.current.close();
+          setWebSocketStatusIQ("Closed (after 5s)");
+          logMessage("🔴 IQ WebSocket closed after 5 seconds.");
+        }
+      }, 5000);
+    };
+
+    wsIQ.current.onmessage = (event) => {
+      const receiveTimestamp = performance.now();
+      if (registerTimestampIQ.current) {
+        const delay = receiveTimestamp - registerTimestampIQ.current;
+        logMessage(`⏱ IQ LOGIN response delay: ${delay.toFixed(2)} ms`);
       }
-    }, 5000);
-  };
+      logMessage(`📩 IQ WebSocket Response: ${event.data}`);
+    };
 
-  wsIQ.current.onmessage = (event) => {
-    const receiveTimestamp = performance.now();
-    if (registerTimestampIQ.current) {
-      const delay = receiveTimestamp - registerTimestampIQ.current;
-      logMessage(`⏱ IQ LOGIN response delay: ${delay.toFixed(2)} ms`);
-    }
-    logMessage(`📩 IQ WebSocket Response: ${event.data}`);
-  };
+    wsIQ.current.onerror = (error) => {
+      setWebSocketStatusIQ("Error");
+      if (error) {
+        logMessage(`❌ IQ WebSocket Error: ${error.message || "Unknown Error"}. Error Object: ${JSON.stringify(error)}`);
+      } else {
+        logMessage("❌ IQ WebSocket Error: Unknown Error. No error object provided.");
+      }
+    };
 
-  wsIQ.current.onerror = (error) => {
+    wsIQ.current.onclose = (event) => {
+      setWebSocketStatusIQ("Closed");
+      logMessage(`🔴 IQ WebSocket closed. Code: ${event.code}, Reason: ${event.reason || "No reason provided"}`);
+    };
+  } catch (error) {
+    logMessage(`❌ IQ WebSocket Error (during creation): ${error.message || "Unknown Error"}.`);
     setWebSocketStatusIQ("Error");
-    if (error) {
-      logMessage(`❌ IQ WebSocket Error: ${error.message || "Unknown Error"}. Error Object: ${JSON.stringify(error)}`);
-    } else {
-      logMessage("❌ IQ WebSocket Error: Unknown Error. No error object provided.");
-    }
-  };
-
-  wsIQ.current.onclose = (event) => {
-    setWebSocketStatusIQ("Closed");
-    logMessage(`🔴 IQ WebSocket closed. Code: ${event.code}, Reason: ${event.reason || "No reason provided"}`);
-  };
+  }
 };
 
 const sendLoginRequest = () => {
