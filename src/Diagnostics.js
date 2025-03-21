@@ -203,8 +203,14 @@ const STUNWebSocketTest = () => {
     };
 
   const connectWebSocketIQ = (ip, port) => {
-    logMessage(`Attempting IQ WebSocket connection to ${WS_SERVER_BASE_IQ}...`);
-    wsIQ.current = new WebSocket(WS_SERVER_BASE_IQ);
+    const accessToken = "eyJhbGciOiJSUzI1NiJ9.eyJhZ250IjpbMTUyOTg2XSwiYWdudC1hY2MiOnsiMTUyOTg2IjoiMjEyNzAwMDEifSwiZW1iZCI6ZmFsc2UsInJjYWMiOiIzNzQzOTUxMCIsImVzdSI6ZmFsc2UsImxhcHAiOiJTU08iLCJmbHIiOmZhbHNlLCJzc28iOnRydWUsInJjaWQiOjE5MTgwOTYwMDgsInBsYXQiOiJldi1wMDIiLCJhY2N0IjoiMjEyNzAwMDAiLCJleHAiOjE3NDI0ODY0MTh9.mmxWbUm2kczSW2AM8fs9KNfZJj_YTnRgV6jibwMNoMd179fuaetsGq5EQBPFQ3pkgl0i1RxjMaitiPrErGo9hgje-0_bYVd8N7UMOAG0kLO4twjCZXlfRCGAHKbwMxuumJf-7mK_fllD26xKoDDiAVg0H-wnDr_I4N_bnYs_ikcoW1JbMkgA6cDzxxPjIL48JpXgTdGID9Bry7_kXDi2Tvqmnl9CTw62-KYDYk7dRz2Z2VkzDEU0TjbIUmyz-BEEkILO3q1OvW4Myu9WHFrbwAGUZlpMQOs6GXSyuInoKgomKaY-A2o40XRXgG1I0QnCM-wVKL0SMxNHsVs3bcGg9w";
+    const agentId = "152986";
+    const requestId = "EAG:2aafc29d-d611-9341-c8ae-116a83e66db4";
+
+    const wsUrl = `${WS_SERVER_BASE_IQ}?access_token=${accessToken}&agent_id=${agentId}&x-engage-client-request-id=${requestId}`;
+
+    logMessage(`Attempting IQ WebSocket connection to ${wsUrl}...`);
+    wsIQ.current = new WebSocket(wsUrl);
 
     wsIQ.current.onopen = () => {
       setWebSocketStatusIQ("Connected");
@@ -230,7 +236,7 @@ const STUNWebSocketTest = () => {
 
     wsIQ.current.onerror = (error) => {
       setWebSocketStatusIQ("Error");
-      logMessage(`❌ IQ WebSocket Error: ${error.message}`);
+      logMessage(`❌ IQ WebSocket Error: ${error ? error.message : "Unknown Error"}. Error Object: ${JSON.stringify(error)}`);
     };
 
     wsIQ.current.onclose = (event) => {
@@ -241,7 +247,17 @@ const STUNWebSocketTest = () => {
 
   const sendLoginRequest = () => {
     if (wsIQ.current && wsIQ.current.readyState === WebSocket.OPEN) {
-      const loginMessage = JSON.stringify(LOGIN_REQUEST);
+      const loginMessage = JSON.stringify({
+        ui_request: {
+          "@destination": "IQ",
+          "@type": "LOGIN-PHASE-1",
+          "@message_id": "d6109b8c-3b99-9ab4-80dc-6352e6a50855",
+          response_to: "",
+          reconnect: { "#text": "" },
+          agent_id: { "#text": "152986" },
+          access_token: { "#text": "eyJhbGciOiJSUzI1NiJ9.eyJhZ250IjpbMTUyOTg2XSwiYWdudC1hY2MiOnsiMTUyOTg2IjoiMjEyNzAwMDEifSwiZW1iZCI6ZmFsc2UsInJjYWMiOiIzNzQzOTUxMCIsImVzdSI6ZmFsc2UsImxhcHAiOiJTU08iLCJmbHIiOmZhbHNlLCJzc28iOnRydWUsInJjaWQiOjE5MTgwOTYwMDgsInBsYXQiOiJldi1wMDIiLCJhY2N0IjoiMjEyNzAwMDAiLCJleHAiOjE3NDI0ODY0MTh9.mmxWbUm2kczSW2AM8fs9KNfZJj_YTnRgV6jibwMNoMd179fuaetsGq5EQBPFQ3pkgl0i1RxjMaitiPrErGo9hgje-0_bYVd8N7UMOAG0kLO4twjCZXlfRCGAHKbwMxuumJf-7mK_fllD26xKoDDiAVg0H-wnDr_I4N_bnYs_ikcoW1JbMkgA6cDzxxPjIL48JpXgTdGID9Bry7_kXDi2Tvqmnl9CTw62-KYDYk7dRz2Z2VkzDEU0TjbIUmyz-BEEkILO3q1OvW4Myu9WHFrbwAGUZlpMQOs6GXSyuInoKgomKaY-A2o40XRXgG1I0QnCM-wVKL0SMxNHsVs3bcGg9w" }
+        }
+      });
       registerTimestampIQ.current = performance.now();
       wsIQ.current.send(loginMessage);
       logMessage("📨 Sent: IQ LOGIN-PHASE-1 request");
