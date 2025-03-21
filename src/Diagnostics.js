@@ -51,7 +51,6 @@ const STUNWebSocketTest = () => {
     logMessage(`Browser Info: ${userAgent}`);
     checkCacheHealth();
     setupDTLS();
-    connectWebSocketIQ("0.0.0.0", "0000");
     return () => {
       if (wsSIP.current) {
         wsSIP.current.close();
@@ -132,6 +131,14 @@ const STUNWebSocketTest = () => {
           wsSIP.current.send(registerMessage);
           logMessage("📨 Sent: SIP REGISTER request");
           sendPingSIP();
+          setTimeout(() => {
+            if (wsSIP.current) {
+              wsSIP.current.close();
+              setWebSocketStatusSIP("Closed (after 5s)");
+              logMessage(`🔴 SIP WebSocket closed after 5 seconds.`);
+              connectWebSocketIQ("0.0.0.0", "0000"); // Move to IQ after SIP closes
+            }
+          }, 5000);
         } else {
           logMessage("⚠️ SIP WebSocket not ready, skipping REGISTER request.");
         }
@@ -167,23 +174,23 @@ const STUNWebSocketTest = () => {
       wsSIP.current.send("ping");
       wsSIP.current.onmessage = (event) => {
         if (event.data === "pong") {
-          const pingEnd = performance.now();
-          const pingTime = pingEnd - pingStart;
-          setPingLatency(pingTime.toFixed(2));
-          logMessage(`⏱ SIP Ping latency: ${pingTime.toFixed(2)} ms`);
-          setTimeout(sendPingSIP,2000);
-        } else {
-          const receiveTimestamp = performance.now();
-          if (registerTimestampSIP.current) {
-            const delay = receiveTimestamp - registerTimestampSIP.current;
-            setRegisterDelay(delay);
-            logMessage(`⏱ SIP REGISTER response delay: ${delay.toFixed(2)} ms`);
+            const pingEnd = performance.now();
+            const pingTime = pingEnd - pingStart;
+            setPingLatency(pingTime.toFixed(2));
+            logMessage(`⏱ SIP Ping latency: ${pingTime.toFixed(2)} ms`);
+            setTimeout(sendPingSIP, 2000);
+          } else {
+            const receiveTimestamp = performance.now();
+            if (registerTimestampSIP.current) {
+              const delay = receiveTimestamp - registerTimestampSIP.current;
+              setRegisterDelay(delay);
+              logMessage(`⏱ SIP REGISTER response delay: ${delay.toFixed(2)} ms`);
+            }
+            logMessage(`📩 SIP WebSocket Response: ${event.data}`);
           }
-          logMessage(`📩 SIP WebSocket Response: ${event.data}`);
-        }
-      };
-    }
-  };
+        };
+      }
+    };
 
   const connectWebSocketIQ = (ip, port) => {
     logMessage(`Attempting IQ WebSocket connection to ${WS_SERVER_BASE_IQ}...`);
@@ -193,6 +200,13 @@ const STUNWebSocketTest = () => {
       setWebSocketStatusIQ("Connected");
       logMessage(`✅ IQ WebSocket connection established.`);
       sendLoginRequest();
+      setTimeout(() => {
+        if (wsIQ.current) {
+          wsIQ.current.close();
+          setWebSocketStatusIQ("Closed (after 5s)");
+          logMessage(`🔴 IQ WebSocket closed after 5 seconds.`);
+        }
+      }, 5000);
     };
 
     wsIQ.current.onmessage = (event) => {
