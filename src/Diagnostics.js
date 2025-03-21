@@ -211,7 +211,11 @@ const STUNWebSocketTest = () => {
   logMessage(`Attempting IQ WebSocket connection to ${wsUrl}...`);
 
   try {
-    wsIQ.current = new WebSocket(wsUrl);
+    wsIQ.current = new WebSocket(wsUrl, ["protocol"], {
+  headers: {
+    "Origin": "https://ringcx.ringcentral.com",
+    },
+});
 
     wsIQ.current.onopen = () => {
       setWebSocketStatusIQ("Connected");
