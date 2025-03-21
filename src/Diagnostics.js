@@ -116,17 +116,27 @@ const STUNWebSocketTest = () => {
   };
 
   const connectWebSocketSIP = (ip, port) => {
-    logMessage(`Attempting SIP WebSocket connection to <span class="math-inline">\{WS\_SERVER\_BASE\_SIP\}?ip\=</span>{ip}&port=${port}...`);
-    const wsUrl = `<span class="math-inline">\{WS\_SERVER\_BASE\_SIP\}?ip\=</span>{ip}&port=${port}`;
+    logMessage(`Attempting SIP WebSocket connection to ${WS_SERVER_BASE_SIP}?ip=${ip}&port=${port}...`);
+    const wsUrl = `${WS_SERVER_BASE_SIP}?ip=${ip}&port=${port}`;
     wsSIP.current = new WebSocket(wsUrl, "sip");
 
     wsSIP.current.onopen = () => {
       setWebSocketStatusSIP("Connected");
       logMessage(`✅ SIP WebSocket connection established.`);
-      
+
       setTimeout(() => {
-        if (wsSIP.current.readyState === WebSocket.OPEN) {
-          const registerMessage = "REGISTER sip:server.com SIP/2.0\r\nVia: SIP/2.0/WSS client.invalid;branch=z9hG4bK776asdhds\r\nMax-Forwards: 70\r\nTo: <sip:server.com>\r\nFrom: <sip:user@server.com>;tag=49583\r\nCall-ID: 1234567890@client.invalid\r\nCSeq: 1 REGISTER\r\nContact: <sip:user@server.com>\r\nExpires: 600\r\nContent-Length: 0\r\n\r\n";
+        if (wsSIP.current && wsSIP.current.readyState === WebSocket.OPEN) {
+          const registerMessage =
+            "REGISTER sip:server.com SIP/2.0\r\n" +
+            "Via: SIP/2.0/WSS client.invalid;branch=z9hG4bK776asdhds\r\n" +
+            "Max-Forwards: 70\r\n" +
+            "To: <sip:server.com>\r\n" +
+            "From: <sip:user@server.com>;tag=49583\r\n" +
+            "Call-ID: 1234567890@client.invalid\r\n" +
+            "CSeq: 1 REGISTER\r\n" +
+            "Contact: <sip:user@server.com>\r\n" +
+            "Expires: 600\r\n" +
+            "Content-Length: 0\r\n\r\n";
           registerTimestampSIP.current = performance.now();
           wsSIP.current.send(registerMessage);
           logMessage("📨 Sent: SIP REGISTER request");
@@ -152,8 +162,8 @@ const STUNWebSocketTest = () => {
         setRegisterDelay(delay);
         logMessage(`⏱ SIP REGISTER response delay: ${delay.toFixed(2)} ms`);
       }
-      if(event.data !== "pong"){
-          logMessage(`📩 SIP WebSocket Response: ${event.data}`);
+      if (event.data !== "pong") {
+        logMessage(`📩 SIP WebSocket Response: ${event.data}`);
       }
     };
 
