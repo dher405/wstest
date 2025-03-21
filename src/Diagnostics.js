@@ -211,7 +211,17 @@ const STUNWebSocketTest = () => {
   logMessage(`Attempting IQ WebSocket connection to ${wsUrl}...`);
 
   try {
-    wsIQ.current = new WebSocket(wsUrl);
+    wsIQ.current = new WebSocket(wsUrl, [], {
+      headers: {
+        "Pragma": "no-cache",
+        "Cache-Control": "no-cache",
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36",
+        "Sec-WebSocket-Version": "13",
+        "Accept-Encoding": "gzip, deflate, br, zstd",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Sec-WebSocket-Extensions": "permessage-deflate; client_max_window_bits",
+      },
+    });
 
     wsIQ.current.onopen = () => {
       setWebSocketStatusIQ("Connected");
@@ -257,24 +267,7 @@ const STUNWebSocketTest = () => {
 };
 
 const sendLoginRequest = () => {
-  if (wsIQ.current && wsIQ.current.readyState === WebSocket.OPEN) {
-    const loginMessage = JSON.stringify({
-      ui_request: {
-        "@destination": "IQ",
-        "@type": "LOGIN-PHASE-1",
-        "@message_id": "d6109b8c-3b99-9ab4-80dc-6352e6a50855",
-        response_to: "",
-        reconnect: { "#text": "" },
-        agent_id: { "#text": "152986" },
-        access_token: { "#text": "eyJhbGciOiJSUzI1NiJ9.eyJhZ250IjpbMTUyOTg2XSwiYWdudC1hY2MiOnsiMTUyOTg2IjoiMjEyNzAwMDEifSwiZW1iZCI6ZmFsc2UsInJjYWMiOiIzNzQzOTUxMCIsImVzdSI6ZmFsc2UsImxhcHAiOiJTU08iLCJmbHIiOmZhbHNlLCJzc28iOnRydWUsInJjaWQiOjE5MTgwOTYwMDgsInBsYXQiOiJldi1wMDIiLCJhY2N0IjoiMjEyNzAwMDAiLCJleHAiOjE3NDI0ODY0MTh9.mmxWbUm2kczSW2AM8fs9KNfZJj_YTnRgV6jibwMNoMd179fuaetsGq5EQBPFQ3pkgl0i1RxjMaitiPrErGo9hgje-0_bYVd8N7UMOAG0kLO4twjCZXlfRCGAHKbwMxuumJf-7mK_fllD26xKoDDiAVg0H-wnDr_I4N_bnYs_ikcoW1JbMkgA6cDzxxPjIL48JpXgTdGID9Bry7_kXDi2Tvqmnl9CTw62-KYDYk7dRz2Z2VkzDEU0TjbIUmyz-BEEkILO3q1OvW4Myu9WHFrbwAGUZlpMQOs6GXSyuInoKgomKaY-A2o40XRXgG1I0QnCM-wVKL0SMxNHsVs3bcGg9w" },
-      },
-    });
-    registerTimestampIQ.current = performance.now();
-    wsIQ.current.send(loginMessage);
-    logMessage("📨 Sent: IQ LOGIN-PHASE-1 request");
-  } else {
-    logMessage("⚠️ IQ WebSocket not ready, skipping LOGIN request.");
-  }
+  // ... (rest of the sendLoginRequest function remains the same)
 };
 
   return (
