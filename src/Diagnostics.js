@@ -237,9 +237,13 @@ const STUNWebSocketTest = () => {
     };
 
     wsIQ.current.onerror = (error) => {
-      setWebSocketStatusIQ("Error");
-      logMessage(`❌ IQ WebSocket Error: ${error ? error.message : "Unknown Error"}. Error Object: ${JSON.stringify(error)}`);
-    };
+  setWebSocketStatusIQ("Error");
+  if (error) {
+    logMessage(`❌ IQ WebSocket Error: ${error.message || "Unknown Error"}. Error Object: ${JSON.stringify(error)}`);
+  } else {
+    logMessage(`❌ IQ WebSocket Error: Unknown Error. No error object provided.`);
+  }
+};
 
     wsIQ.current.onclose = (event) => {
       setWebSocketStatusIQ("Closed");
