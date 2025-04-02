@@ -8,7 +8,7 @@ const STUN_SERVERS = [
 ];
 
 const WS_SERVER_BASE_SIP = "wss://sip123-1211.ringcentral.com:8083/";
-const WS_SERVER_BASE_IQ = "wss://wcm-ev-p02-eo1.engage.ringcentral.com:8080/";
+const WS_SERVER_BASE_IQ = "wss://wcm-ev-p02-eo1.engage.ringcentral.com/ws";
 
 const LOGIN_REQUEST = {
   "ui_request": {
