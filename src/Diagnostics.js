@@ -203,24 +203,20 @@ const STUNWebSocketTest = () => {
     };
   
   const connectWebSocketIQ = () => {
-  const accessToken = "eyJhbGciOiJSUzI1NiJ9.eyJhZ250IjpbMTUyOTg2XSwiYWdudC1hY2MiOnsiMTUyOTg2IjoiMjEyNzAwMDEifSwiZW1iZCI6ZmFsc2UsInJjYWMiOiIzNzQzOTUxMCIsImVzdSI6ZmFsc2UsImxhcHAiOiJTU08iLCJmbHIiOmZhbHNlLCJzc28iOnRydWUsInJjaWQiOjE5MTgwOTYwMDgsInBsYXQiOiJldi1wMDIiLCJhY2N0IjoiMjEyNzAwMDAiLCJleHAiOjE3NDI0ODY0MTh9.mmxWbUm2kczSW2AM8fs9KNfZJj_YTnRgV6jibwMNoMd179fuaetsGq5EQBPFQ3pkgl0i1RxjMaitiPrErGo9hgje-0_bYVd8N7UMOAG0kLO4twjCZXlfRCGAHKbwMxuumJf-7mK_fllD26xKoDDiAVg0H-wnDr_I4N_bnYs_ikcoW1JbMkgA6cDzxxPjIL48JpXgTdGID9Bry7_kXDi2Tvqmnl9CTw62-KYDYk7dRz2Z2VkzDEU0TjbIUmyz-BEEkILO3q1OvW4Myu9WHFrbwAGUZlpMQOs6GXSyuInoKgomKaY-A2o40XRXgG1I0QnCM-wVKL0SMxNHsVs3bcGg9w";
+  const accessToken = "eyJhbGciOiJSUzI1NiJ9.eyJhZ250IjpbMTUyOTg2XSwiYWdudC1hY2MiOnsiMTUyOTg2IjoiMjEyNzAwMDEifSwiZW1iZCI6ZmFsc2UsInJjYWMiOiIzNzQzOTUxMCIsImVzdSI6ZmFsc2UsImxhcHAiOiJTU08iLCJmbHIiOmZhbHNlLCJzc28iOnRydWUsInJjaWQiOjE5MTgwOTYwMDgsInBsYXQiOiJldi1wMDIiLCJhY2N0IjoiMjEyNzAwMDAiLCJleHAiOjE3NDM2MjIyMTR9.j5zacxj-Vtu5qFP-yqaClWCkyFDXDl4d1CAfy8d2K6E8ZfrAOmflzuBdiN4-2PqFXn-_w42yVVB5dVmwv7bBB2s9F_09a4nehORJpL_wdBbBCMPH568Q4t8xrJsK8qfoOdvGtPPBTyL7GTg9if-EUcSc3ZWIPYHwGMLUeMO60ORt8V2iqq43BjUAZm6qlFiO0-fD6I1MvvcK2J7bXYADh4nF528r3n39iIRQLOLw6QuI8sTaAKOpPndxGLS3pIeipgpS-oFyGWDNQhb6xMaei9nDp61Le6CIFqytUrAstYK2vQ4wUsvXrRbx20ZRj2J0gmO_uPN_m8FA-Q2UoVLxMQ";
   const agentId = "152986";
-  const requestId = "EAG:2aafc29d-d611-9341-c8ae-116a83e66db4";
-  const wsUrl = `${WS_SERVER_BASE_IQ}?access_token=${accessToken}&agent_id=${agentId}&x-engage-client-request-id=${requestId}`;
+  const requestId = "EAG:23a5760a-5bb8-cab6-b013-a29b0a129209";
+
+  const wsUrl = `${WS_SERVER_BASE_IQ}?access_token=${encodeURIComponent(accessToken)}&agent_id=${agentId}&x-engage-client-request-id=${encodeURIComponent(requestId)}`;
 
   logMessage(`Attempting IQ WebSocket connection to ${wsUrl}...`);
 
   try {
-    wsIQ.current = new WebSocket(wsUrl, ["protocol"], {
-  headers: {
-    "Origin": "https://ringcx.ringcentral.com",
-    },
-});
+    wsIQ.current = new WebSocket(wsUrl);
 
     wsIQ.current.onopen = () => {
       setWebSocketStatusIQ("Connected");
       logMessage("✅ IQ WebSocket connection established.");
-      logMessage("Attempting to send Login Request");
       sendLoginRequest();
 
       setTimeout(() => {
@@ -243,11 +239,7 @@ const STUNWebSocketTest = () => {
 
     wsIQ.current.onerror = (error) => {
       setWebSocketStatusIQ("Error");
-      if (error) {
-        logMessage(`❌ IQ WebSocket Error: ${error.message || "Unknown Error"}. Error Object: ${JSON.stringify(error)}`);
-      } else {
-        logMessage("❌ IQ WebSocket Error: Unknown Error. No error object provided.");
-      }
+      logMessage(`❌ IQ WebSocket Error: ${error.message || "Unknown Error"}`);
     };
 
     wsIQ.current.onclose = (event) => {
@@ -255,7 +247,7 @@ const STUNWebSocketTest = () => {
       logMessage(`🔴 IQ WebSocket closed. Code: ${event.code}, Reason: ${event.reason || "No reason provided"}`);
     };
   } catch (error) {
-    logMessage(`❌ IQ WebSocket Error (during creation): ${error.message || "Unknown Error"}.`);
+    logMessage(`❌ IQ WebSocket Error (during creation): ${error.message || "Unknown Error"}`);
     setWebSocketStatusIQ("Error");
   }
 };
