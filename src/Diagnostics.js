@@ -155,17 +155,33 @@ const STUNWebSocketTest = () => {
       }, 500);
     };
 
-    wsSIP.current.onmessage = (event) => {
-      const receiveTimestamp = performance.now();
-      if (registerTimestampSIP.current) {
-        const delay = receiveTimestamp - registerTimestampSIP.current;
-        setRegisterDelay(delay);
-        logMessage(`⏱ SIP REGISTER response delay: ${delay.toFixed(2)} ms`);
-      }
-      if (event.data !== "pong") {
-        logMessage(`📩 SIP WebSocket Response: ${event.data}`);
-      }
-    };
+    wsIQ.current.onmessage = (event) => {
+  const receiveTimestamp = performance.now();
+  if (registerTimestampIQ.current) {
+    const delay = receiveTimestamp - registerTimestampIQ.current;
+    logMessage(`⏱ IQ LOGIN response delay: ${delay.toFixed(2)} ms`);
+  }
+
+  logMessage(`📩 Raw IQ WebSocket Response: ${event.data}`);
+
+  try {
+    const response = JSON.parse(event.data);
+
+    if (response.ui_response?.["@type"] === "LOGIN" && response.ui_response.status?.["#text"] === "SUCCESS") {
+      const message = response.ui_response.message?.["#text"] || "No message";
+      const agentId = response.ui_response.agent_id?.["#text"];
+      const dialDest = response.ui_response.dial_dest?.["#text"];
+      const gates = response.ui_response.gates?.gate_id?.map((g) => g["#text"]).join(", ");
+
+      logMessage(`✅ Login Successful: ${message}`);
+      logMessage(`👤 Agent ID: ${agentId}`);
+      logMessage(`📞 Dial Destination: ${dialDest}`);
+      logMessage(`🎯 Gate IDs: ${gates}`);
+    }
+  } catch (err) {
+    logMessage(`⚠️ Failed to parse IQ WebSocket response: ${err.message}`);
+  }
+};
 
     wsSIP.current.onerror = (error) => {
       setWebSocketStatusSIP("Error");
