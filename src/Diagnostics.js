@@ -8,7 +8,7 @@ const STUN_SERVERS = [
 ];
 
 const WS_SERVER_BASE_SIP = "wss://sip123-1211.ringcentral.com:8083/";
-const WS_SERVER_BASE_IQ = "wss://wcm-ev-p02-eo1.engage.ringcentral.com/ws";
+const WS_SERVER_BASE_IQ = "wss://wcm-ev-p02-eo1.engage.ringcentral.com/ws"; // Update if testing local
 
 const STUNWebSocketTest = () => {
   const [logs, setLogs] = useState([]);
@@ -28,6 +28,10 @@ const STUNWebSocketTest = () => {
   const wsIQ = useRef(null);
   const registerTimestampSIP = useRef(null);
   const registerTimestampIQ = useRef(null);
+
+  const accessToken = "eyJhbGciOiJSUzI1NiJ9...."; // Replace with full token
+  const agentId = "152986";
+  const requestId = "EAG:23a5760a-5bb8-cab6-b013-a29b0a129209";
 
   const logMessage = (message) => {
     const timestamp = new Date().toISOString();
@@ -129,11 +133,9 @@ const STUNWebSocketTest = () => {
             setTimeout(() => {
               wsSIP.current?.close();
               setWebSocketStatusSIP("Closed (after 5s)");
-              logMessage(`🔴 SIP WebSocket closed after 5 seconds.`);
+              logMessage("🔴 SIP WebSocket closed after 5 seconds.");
               connectWebSocketIQ();
             }, 5000);
-          } else {
-            logMessage("⚠️ SIP WebSocket not ready, skipping REGISTER.");
           }
         }, 500);
       };
@@ -144,7 +146,6 @@ const STUNWebSocketTest = () => {
           const pingTime = receiveTimestamp - registerTimestampSIP.current;
           setPingLatency(pingTime.toFixed(2));
           logMessage(`⏱ SIP Ping latency: ${pingTime.toFixed(2)} ms`);
-          setTimeout(sendPingSIP, 2000);
         } else {
           if (registerTimestampSIP.current) {
             const delay = receiveTimestamp - registerTimestampSIP.current;
@@ -162,7 +163,7 @@ const STUNWebSocketTest = () => {
 
       wsSIP.current.onclose = (event) => {
         setWebSocketStatusSIP("Closed");
-        logMessage(`🔴 SIP WebSocket closed. Code: ${event.code}, Reason: ${event.reason || "No reason"}`);
+        logMessage(`🔴 SIP WebSocket closed. Code: ${event.code}, Reason: ${event.reason || "No reason provided"}`);
       };
     } catch (err) {
       logMessage(`❌ Failed to create SIP WebSocket: ${err.message}`);
@@ -176,15 +177,12 @@ const STUNWebSocketTest = () => {
   };
 
   const connectWebSocketIQ = () => {
-    const accessToken = "eyJhbGciOiJSUzI1NiJ9...."; // shortened for readability
-    const agentId = "152986";
-    const requestId = "EAG:23a5760a-5bb8-cab6-b013-a29b0a129209";
     const wsUrl = `${WS_SERVER_BASE_IQ}?access_token=${encodeURIComponent(accessToken)}&agent_id=${agentId}&x-engage-client-request-id=${encodeURIComponent(requestId)}`;
-
     logMessage(`Attempting IQ WebSocket connection to ${wsUrl}...`);
 
     try {
       wsIQ.current = new WebSocket(wsUrl);
+      console.log("🧪 IQ WebSocket state:", wsIQ.current.readyState);
 
       wsIQ.current.onopen = () => {
         setWebSocketStatusIQ("Connected");
@@ -211,13 +209,8 @@ const STUNWebSocketTest = () => {
           const response = JSON.parse(event.data);
           if (response.ui_response?.["@type"] === "LOGIN" && response.ui_response.status?.["#text"] === "SUCCESS") {
             const message = response.ui_response.message?.["#text"];
-            const agentId = response.ui_response.agent_id?.["#text"];
-            const dialDest = response.ui_response.dial_dest?.["#text"];
-            const gates = response.ui_response.gates?.gate_id?.map((g) => g["#text"]).join(", ");
-
+            const gates = response.ui_response.gates?.gate_id?.map(g => g["#text"]).join(", ");
             logMessage(`✅ Login Successful: ${message}`);
-            logMessage(`👤 Agent ID: ${agentId}`);
-            logMessage(`📞 Dial Destination: ${dialDest}`);
             logMessage(`🎯 Gate IDs: ${gates}`);
           }
         } catch (err) {
@@ -227,16 +220,17 @@ const STUNWebSocketTest = () => {
 
       wsIQ.current.onerror = (error) => {
         setWebSocketStatusIQ("Error");
+        console.error("🔥 IQ WebSocket error:", error);
         logMessage(`❌ IQ WebSocket Error: ${error.message || "Unknown Error"}`);
       };
 
       wsIQ.current.onclose = (event) => {
         setWebSocketStatusIQ("Closed");
-        logMessage(`🔴 IQ WebSocket closed. Code: ${event.code}, Reason: ${event.reason || "No reason provided"}`);
+        console.warn("🔌 IQ WebSocket closed:", event);
+        logMessage(`🔴 IQ WebSocket closed. Code: ${event.code}, Reason: ${event.reason || "No reason"}`);
       };
     } catch (err) {
-      logMessage(`❌ IQ WebSocket Error: ${err.message}`);
-      setWebSocketStatusIQ("Error");
+      logMessage(`❌ IQ WebSocket Error (during creation): ${err.message}`);
     }
   };
 
@@ -249,8 +243,8 @@ const STUNWebSocketTest = () => {
           "@message_id": "d6109b8c-3b99-9ab4-80dc-6352e6a50855",
           response_to: "",
           reconnect: { "#text": "" },
-          agent_id: { "#text": "152986" },
-          access_token: { "#text": "eyJhbGciOiJSUzI1NiJ9...." } // shortened
+          agent_id: { "#text": agentId },
+          access_token: { "#text": accessToken }
         }
       });
       registerTimestampIQ.current = performance.now();
@@ -281,3 +275,4 @@ const STUNWebSocketTest = () => {
 };
 
 export default STUNWebSocketTest;
+
