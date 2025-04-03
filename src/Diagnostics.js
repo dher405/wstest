@@ -8,7 +8,7 @@ const STUN_SERVERS = [
 ];
 
 const WS_SERVER_BASE_SIP = "wss://sip123-1211.ringcentral.com:8083/";
-const WS_SERVER_BASE_IQ = "wss://wcm-ev-p02-eo1.engage.ringcentral.com/ws"; // Update if testing local
+const WS_SERVER_BASE_IQ = "wss://tcr-api-bzn4.onrender.com/iq";
 
 const STUNWebSocketTest = () => {
   const [logs, setLogs] = useState([]);
