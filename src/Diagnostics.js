@@ -10,18 +10,6 @@ const STUN_SERVERS = [
 const WS_SERVER_BASE_SIP = "wss://sip123-1211.ringcentral.com:8083/";
 const WS_SERVER_BASE_IQ = "wss://wcm-ev-p02-eo1.engage.ringcentral.com/ws";
 
-const LOGIN_REQUEST = {
-  "ui_request": {
-    "@destination": "IQ",
-    "@type": "LOGIN-PHASE-1",
-    "@message_id": "d6109b8c-3b99-9ab4-80dc-6352e6a50855",
-    "response_to": "",
-    "reconnect": { "#text": "" },
-    "agent_id": { "#text": "152986" },
-    "access_token": { "#text": "eyJhbGciOiJSUzI1NiJ9..." }
-  }
-};
-
 const STUNWebSocketTest = () => {
   const [logs, setLogs] = useState([]);
   const [externalIP, setExternalIP] = useState(null);
@@ -34,30 +22,26 @@ const STUNWebSocketTest = () => {
   const [registerDelay, setRegisterDelay] = useState(null);
   const [browserInfo, setBrowserInfo] = useState("");
   const [cacheHealth, setCacheHealth] = useState("Checking...");
+  const [pingLatency, setPingLatency] = useState(null);
+
   const wsSIP = useRef(null);
   const wsIQ = useRef(null);
   const registerTimestampSIP = useRef(null);
   const registerTimestampIQ = useRef(null);
-  const [pingLatency, setPingLatency] = useState(null);
 
   const logMessage = (message) => {
     const timestamp = new Date().toISOString();
-    setLogs((prevLogs) => [...(prevLogs || []), `[${timestamp}] ${message}`]);
+    setLogs((prevLogs) => [...prevLogs, `[${timestamp}] ${message}`]);
   };
 
   useEffect(() => {
-    const userAgent = navigator.userAgent;
-    setBrowserInfo(userAgent);
-    logMessage(`Browser Info: ${userAgent}`);
+    setBrowserInfo(navigator.userAgent);
+    logMessage(`Browser Info: ${navigator.userAgent}`);
     checkCacheHealth();
     setupDTLS();
     return () => {
-      if (wsSIP.current) {
-        wsSIP.current.close();
-      }
-      if (wsIQ.current) {
-        wsIQ.current.close();
-      }
+      wsSIP.current?.close();
+      wsIQ.current?.close();
     };
   }, []);
 
@@ -81,7 +65,7 @@ const STUNWebSocketTest = () => {
     }
   };
 
-  const setupSTUN = async (pc) => {
+  const setupSTUN = (pc) => {
     logMessage("Attempting to set up STUN connection...");
     pc.onicecandidate = (event) => {
       if (event.candidate) {
@@ -94,9 +78,7 @@ const STUNWebSocketTest = () => {
           setExternalIP(ip);
           setExternalPort(port);
           setStunSuccess(true);
-          setTimeout(() => {
-            connectWebSocketSIP(ip, port);
-          }, 100);
+          setTimeout(() => connectWebSocketSIP(ip, port), 100);
           pc.close();
         }
       }
@@ -106,7 +88,7 @@ const STUNWebSocketTest = () => {
   const checkCacheHealth = () => {
     caches.keys().then((cacheNames) => {
       if (cacheNames.length > 0) {
-        logMessage(`⚠️ Browser cache detected (${cacheNames.length} cache entries). This may contribute to delays.`);
+        logMessage(`⚠️ Browser cache detected (${cacheNames.length} entries). May cause delays.`);
         setCacheHealth("Cache detected, may cause delays.");
       } else {
         logMessage("✅ No significant browser cache detected.");
@@ -116,178 +98,168 @@ const STUNWebSocketTest = () => {
   };
 
   const connectWebSocketSIP = (ip, port) => {
-    logMessage(`Attempting SIP WebSocket connection to ${WS_SERVER_BASE_SIP}?ip=${ip}&port=${port}...`);
     const wsUrl = `${WS_SERVER_BASE_SIP}?ip=${ip}&port=${port}`;
-    wsSIP.current = new WebSocket(wsUrl, "sip");
+    logMessage(`Attempting SIP WebSocket connection to ${wsUrl}...`);
 
-    wsSIP.current.onopen = () => {
-      setWebSocketStatusSIP("Connected");
-      logMessage(`✅ SIP WebSocket connection established.`);
+    try {
+      wsSIP.current = new WebSocket(wsUrl, "sip");
 
-      setTimeout(() => {
-        if (wsSIP.current && wsSIP.current.readyState === WebSocket.OPEN) {
-          const registerMessage =
-            "REGISTER sip:server.com SIP/2.0\r\n" +
-            "Via: SIP/2.0/WSS client.invalid;branch=z9hG4bK776asdhds\r\n" +
-            "Max-Forwards: 70\r\n" +
-            "To: <sip:server.com>\r\n" +
-            "From: <sip:user@server.com>;tag=49583\r\n" +
-            "Call-ID: 1234567890@client.invalid\r\n" +
-            "CSeq: 1 REGISTER\r\n" +
-            "Contact: <sip:user@server.com>\r\n" +
-            "Expires: 600\r\n" +
-            "Content-Length: 0\r\n\r\n";
-          registerTimestampSIP.current = performance.now();
-          wsSIP.current.send(registerMessage);
-          logMessage("📨 Sent: SIP REGISTER request");
-          sendPingSIP();
-          setTimeout(() => {
-            if (wsSIP.current) {
-              wsSIP.current.close();
+      wsSIP.current.onopen = () => {
+        setWebSocketStatusSIP("Connected");
+        logMessage(`✅ SIP WebSocket connection established.`);
+
+        setTimeout(() => {
+          if (wsSIP.current?.readyState === WebSocket.OPEN) {
+            const registerMessage =
+              "REGISTER sip:server.com SIP/2.0\r\n" +
+              "Via: SIP/2.0/WSS client.invalid;branch=z9hG4bK776asdhds\r\n" +
+              "Max-Forwards: 70\r\n" +
+              "To: <sip:server.com>\r\n" +
+              "From: <sip:user@server.com>;tag=49583\r\n" +
+              "Call-ID: 1234567890@client.invalid\r\n" +
+              "CSeq: 1 REGISTER\r\n" +
+              "Contact: <sip:user@server.com>\r\n" +
+              "Expires: 600\r\n" +
+              "Content-Length: 0\r\n\r\n";
+            registerTimestampSIP.current = performance.now();
+            wsSIP.current.send(registerMessage);
+            logMessage("📨 Sent: SIP REGISTER request");
+            sendPingSIP();
+
+            setTimeout(() => {
+              wsSIP.current?.close();
               setWebSocketStatusSIP("Closed (after 5s)");
               logMessage(`🔴 SIP WebSocket closed after 5 seconds.`);
-              connectWebSocketIQ("0.0.0.0", "0000"); // Move to IQ after SIP closes
-            }
-          }, 5000);
+              connectWebSocketIQ();
+            }, 5000);
+          } else {
+            logMessage("⚠️ SIP WebSocket not ready, skipping REGISTER.");
+          }
+        }, 500);
+      };
+
+      wsSIP.current.onmessage = (event) => {
+        const receiveTimestamp = performance.now();
+        if (event.data === "pong") {
+          const pingTime = receiveTimestamp - registerTimestampSIP.current;
+          setPingLatency(pingTime.toFixed(2));
+          logMessage(`⏱ SIP Ping latency: ${pingTime.toFixed(2)} ms`);
+          setTimeout(sendPingSIP, 2000);
         } else {
-          logMessage("⚠️ SIP WebSocket not ready, skipping REGISTER request.");
+          if (registerTimestampSIP.current) {
+            const delay = receiveTimestamp - registerTimestampSIP.current;
+            setRegisterDelay(delay);
+            logMessage(`⏱ SIP REGISTER response delay: ${delay.toFixed(2)} ms`);
+          }
+          logMessage(`📩 SIP WebSocket Response: ${event.data}`);
         }
-      }, 500);
-    };
+      };
 
-    wsIQ.current.onmessage = (event) => {
-  const receiveTimestamp = performance.now();
-  if (registerTimestampIQ.current) {
-    const delay = receiveTimestamp - registerTimestampIQ.current;
-    logMessage(`⏱ IQ LOGIN response delay: ${delay.toFixed(2)} ms`);
-  }
+      wsSIP.current.onerror = (error) => {
+        setWebSocketStatusSIP("Error");
+        logMessage(`❌ SIP WebSocket Error: ${error.message}`);
+      };
 
-  logMessage(`📩 Raw IQ WebSocket Response: ${event.data}`);
-
-  try {
-    const response = JSON.parse(event.data);
-
-    if (response.ui_response?.["@type"] === "LOGIN" && response.ui_response.status?.["#text"] === "SUCCESS") {
-      const message = response.ui_response.message?.["#text"] || "No message";
-      const agentId = response.ui_response.agent_id?.["#text"];
-      const dialDest = response.ui_response.dial_dest?.["#text"];
-      const gates = response.ui_response.gates?.gate_id?.map((g) => g["#text"]).join(", ");
-
-      logMessage(`✅ Login Successful: ${message}`);
-      logMessage(`👤 Agent ID: ${agentId}`);
-      logMessage(`📞 Dial Destination: ${dialDest}`);
-      logMessage(`🎯 Gate IDs: ${gates}`);
+      wsSIP.current.onclose = (event) => {
+        setWebSocketStatusSIP("Closed");
+        logMessage(`🔴 SIP WebSocket closed. Code: ${event.code}, Reason: ${event.reason || "No reason"}`);
+      };
+    } catch (err) {
+      logMessage(`❌ Failed to create SIP WebSocket: ${err.message}`);
     }
-  } catch (err) {
-    logMessage(`⚠️ Failed to parse IQ WebSocket response: ${err.message}`);
-  }
-};
-
-    wsSIP.current.onerror = (error) => {
-      setWebSocketStatusSIP("Error");
-      logMessage(`❌ SIP WebSocket Error: ${error.message}`);
-    };
-
-    wsSIP.current.onclose = (event) => {
-      setWebSocketStatusSIP("Closed");
-      logMessage(`🔴 SIP WebSocket closed. Code: ${event.code}, Reason: ${event.reason || "No reason provided"}`);
-    };
   };
 
   const sendPingSIP = () => {
-    if (wsSIP.current && wsSIP.current.readyState === WebSocket.OPEN) {
-      const pingStart = performance.now();
+    if (wsSIP.current?.readyState === WebSocket.OPEN) {
       wsSIP.current.send("ping");
-      wsSIP.current.onmessage = (event) => {
-        if (event.data === "pong") {
-            const pingEnd = performance.now();
-            const pingTime = pingEnd - pingStart;
-            setPingLatency(pingTime.toFixed(2));
-            logMessage(`⏱ SIP Ping latency: ${pingTime.toFixed(2)} ms`);
-            setTimeout(sendPingSIP, 2000);
-          } else {
-            const receiveTimestamp = performance.now();
-            if (registerTimestampSIP.current) {
-              const delay = receiveTimestamp - registerTimestampSIP.current;
-              setRegisterDelay(delay);
-              logMessage(`⏱ SIP REGISTER response delay: ${delay.toFixed(2)} ms`);
-            }
-            logMessage(`📩 SIP WebSocket Response: ${event.data}`);
-          }
-        };
-      }
-    };
-  
+    }
+  };
+
   const connectWebSocketIQ = () => {
-  const accessToken = "eyJhbGciOiJSUzI1NiJ9.eyJhZ250IjpbMTUyOTg2XSwiYWdudC1hY2MiOnsiMTUyOTg2IjoiMjEyNzAwMDEifSwiZW1iZCI6ZmFsc2UsInJjYWMiOiIzNzQzOTUxMCIsImVzdSI6ZmFsc2UsImxhcHAiOiJTU08iLCJmbHIiOmZhbHNlLCJzc28iOnRydWUsInJjaWQiOjE5MTgwOTYwMDgsInBsYXQiOiJldi1wMDIiLCJhY2N0IjoiMjEyNzAwMDAiLCJleHAiOjE3NDM2MjIyMTR9.j5zacxj-Vtu5qFP-yqaClWCkyFDXDl4d1CAfy8d2K6E8ZfrAOmflzuBdiN4-2PqFXn-_w42yVVB5dVmwv7bBB2s9F_09a4nehORJpL_wdBbBCMPH568Q4t8xrJsK8qfoOdvGtPPBTyL7GTg9if-EUcSc3ZWIPYHwGMLUeMO60ORt8V2iqq43BjUAZm6qlFiO0-fD6I1MvvcK2J7bXYADh4nF528r3n39iIRQLOLw6QuI8sTaAKOpPndxGLS3pIeipgpS-oFyGWDNQhb6xMaei9nDp61Le6CIFqytUrAstYK2vQ4wUsvXrRbx20ZRj2J0gmO_uPN_m8FA-Q2UoVLxMQ";
-  const agentId = "152986";
-  const requestId = "EAG:23a5760a-5bb8-cab6-b013-a29b0a129209";
+    const accessToken = "eyJhbGciOiJSUzI1NiJ9...."; // shortened for readability
+    const agentId = "152986";
+    const requestId = "EAG:23a5760a-5bb8-cab6-b013-a29b0a129209";
+    const wsUrl = `${WS_SERVER_BASE_IQ}?access_token=${encodeURIComponent(accessToken)}&agent_id=${agentId}&x-engage-client-request-id=${encodeURIComponent(requestId)}`;
 
-  const wsUrl = `${WS_SERVER_BASE_IQ}?access_token=${encodeURIComponent(accessToken)}&agent_id=${agentId}&x-engage-client-request-id=${encodeURIComponent(requestId)}`;
+    logMessage(`Attempting IQ WebSocket connection to ${wsUrl}...`);
 
-  logMessage(`Attempting IQ WebSocket connection to ${wsUrl}...`);
+    try {
+      wsIQ.current = new WebSocket(wsUrl);
 
-  try {
-    wsIQ.current = new WebSocket(wsUrl);
+      wsIQ.current.onopen = () => {
+        setWebSocketStatusIQ("Connected");
+        logMessage("✅ IQ WebSocket connection established.");
+        sendLoginRequest();
 
-    wsIQ.current.onopen = () => {
-      setWebSocketStatusIQ("Connected");
-      logMessage("✅ IQ WebSocket connection established.");
-      sendLoginRequest();
-
-      setTimeout(() => {
-        if (wsIQ.current) {
-          wsIQ.current.close();
+        setTimeout(() => {
+          wsIQ.current?.close();
           setWebSocketStatusIQ("Closed (after 5s)");
           logMessage("🔴 IQ WebSocket closed after 5 seconds.");
+        }, 5000);
+      };
+
+      wsIQ.current.onmessage = (event) => {
+        const receiveTimestamp = performance.now();
+        if (registerTimestampIQ.current) {
+          const delay = receiveTimestamp - registerTimestampIQ.current;
+          logMessage(`⏱ IQ LOGIN response delay: ${delay.toFixed(2)} ms`);
         }
-      }, 5000);
-    };
 
-    wsIQ.current.onmessage = (event) => {
-      const receiveTimestamp = performance.now();
-      if (registerTimestampIQ.current) {
-        const delay = receiveTimestamp - registerTimestampIQ.current;
-        logMessage(`⏱ IQ LOGIN response delay: ${delay.toFixed(2)} ms`);
-      }
-      logMessage(`📩 IQ WebSocket Response: ${event.data}`);
-    };
+        logMessage(`📩 IQ WebSocket Response: ${event.data}`);
 
-    wsIQ.current.onerror = (error) => {
+        try {
+          const response = JSON.parse(event.data);
+          if (response.ui_response?.["@type"] === "LOGIN" && response.ui_response.status?.["#text"] === "SUCCESS") {
+            const message = response.ui_response.message?.["#text"];
+            const agentId = response.ui_response.agent_id?.["#text"];
+            const dialDest = response.ui_response.dial_dest?.["#text"];
+            const gates = response.ui_response.gates?.gate_id?.map((g) => g["#text"]).join(", ");
+
+            logMessage(`✅ Login Successful: ${message}`);
+            logMessage(`👤 Agent ID: ${agentId}`);
+            logMessage(`📞 Dial Destination: ${dialDest}`);
+            logMessage(`🎯 Gate IDs: ${gates}`);
+          }
+        } catch (err) {
+          logMessage(`⚠️ Failed to parse IQ WebSocket response: ${err.message}`);
+        }
+      };
+
+      wsIQ.current.onerror = (error) => {
+        setWebSocketStatusIQ("Error");
+        logMessage(`❌ IQ WebSocket Error: ${error.message || "Unknown Error"}`);
+      };
+
+      wsIQ.current.onclose = (event) => {
+        setWebSocketStatusIQ("Closed");
+        logMessage(`🔴 IQ WebSocket closed. Code: ${event.code}, Reason: ${event.reason || "No reason provided"}`);
+      };
+    } catch (err) {
+      logMessage(`❌ IQ WebSocket Error: ${err.message}`);
       setWebSocketStatusIQ("Error");
-      logMessage(`❌ IQ WebSocket Error: ${error.message || "Unknown Error"}`);
-    };
+    }
+  };
 
-    wsIQ.current.onclose = (event) => {
-      setWebSocketStatusIQ("Closed");
-      logMessage(`🔴 IQ WebSocket closed. Code: ${event.code}, Reason: ${event.reason || "No reason provided"}`);
-    };
-  } catch (error) {
-    logMessage(`❌ IQ WebSocket Error (during creation): ${error.message || "Unknown Error"}`);
-    setWebSocketStatusIQ("Error");
-  }
-};
-
-const sendLoginRequest = () => {
-  if (wsIQ.current && wsIQ.current.readyState === WebSocket.OPEN) {
-    const loginMessage = JSON.stringify({
-      ui_request: {
-        "@destination": "IQ",
-        "@type": "LOGIN-PHASE-1",
-        "@message_id": "d6109b8c-3b99-9ab4-80dc-6352e6a50855",
-        response_to: "",
-        reconnect: { "#text": "" },
-        agent_id: { "#text": "152986" },
-        access_token: { "#text": "eyJhbGciOiJSUzI1NiJ9.eyJhZ250IjpbMTUyOTg2XSwiYWdudC1hY2MiOnsiMTUyOTg2IjoiMjEyNzAwMDEifSwiZW1iZCI6ZmFsc2UsInJjYWMiOiIzNzQzOTUxMCIsImVzdSI6ZmFsc2UsImxhcHAiOiJTU08iLCJmbHIiOmZhbHNlLCJzc28iOnRydWUsInJjaWQiOjE5MTgwOTYwMDgsInBsYXQiOiJldi1wMDIiLCJhY2N0IjoiMjEyNzAwMDAiLCJleHAiOjE3NDI0ODY0MTh9.mmxWbUm2kczSW2AM8fs9KNfZJj_YTnRgV6jibwMNoMd179fuaetsGq5EQBPFQ3pkgl0i1RxjMaitiPrErGo9hgje-0_bYVd8N7UMOAG0kLO4twjCZXlfRCGAHKbwMxuumJf-7mK_fllD26xKoDDiAVg0H-wnDr_I4N_bnYs_ikcoW1JbMkgA6cDzxxPjIL48JpXgTdGID9Bry7_kXDi2Tvqmnl9CTw62-KYDYk7dRz2Z2VkzDEU0TjbIUmyz-BEEkILO3q1OvW4Myu9WHFrbwAGUZlpMQOs6GXSyuInoKgomKaY-A2o40XRXgG1I0QnCM-wVKL0SMxNHsVs3bcGg9w" },
-      },
-    });
-    registerTimestampIQ.current = performance.now();
-    wsIQ.current.send(loginMessage);
-    logMessage("📨 Sent: IQ LOGIN-PHASE-1 request");
-  } else {
-    logMessage("⚠️ IQ WebSocket not ready, skipping LOGIN request.");
-  }
-};
+  const sendLoginRequest = () => {
+    if (wsIQ.current?.readyState === WebSocket.OPEN) {
+      const loginMessage = JSON.stringify({
+        ui_request: {
+          "@destination": "IQ",
+          "@type": "LOGIN-PHASE-1",
+          "@message_id": "d6109b8c-3b99-9ab4-80dc-6352e6a50855",
+          response_to: "",
+          reconnect: { "#text": "" },
+          agent_id: { "#text": "152986" },
+          access_token: { "#text": "eyJhbGciOiJSUzI1NiJ9...." } // shortened
+        }
+      });
+      registerTimestampIQ.current = performance.now();
+      wsIQ.current.send(loginMessage);
+      logMessage("📨 Sent: IQ LOGIN-PHASE-1 request");
+    } else {
+      logMessage("⚠️ IQ WebSocket not ready, skipping LOGIN request.");
+    }
+  };
 
   return (
     <div style={{ padding: "20px", fontFamily: "Arial" }}>
@@ -300,9 +272,10 @@ const sendLoginRequest = () => {
       <p><strong>SIP WebSocket Status:</strong> {webSocketStatusSIP}</p>
       <p><strong>IQ WebSocket Status:</strong> {webSocketStatusIQ}</p>
       <p><strong>REGISTER Response Delay:</strong> {registerDelay ? `${registerDelay.toFixed(2)} ms` : "Waiting..."}</p>
+      <p><strong>Ping Latency:</strong> {pingLatency ? `${pingLatency} ms` : "N/A"}</p>
       <p><strong>Browser Info:</strong> {browserInfo}</p>
       <p><strong>Cache Health:</strong> {cacheHealth}</p>
-      <pre>{logs.length > 0 ? logs.join("\n") : "No logs yet..."}</pre>
+      <pre>{logs.join("\n")}</pre>
     </div>
   );
 };
